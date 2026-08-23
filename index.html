@@ -471,6 +471,138 @@
     const MCHAT_MEDIUM_RISK_MIN = 3; // 3–7 → administer the Follow-Up
     const MCHAT_HIGH_RISK_MIN = 8;   // 8–20 → may bypass Follow-Up and refer
 
+    // ─── BITSEA Question Bank ───
+    // Brief Infant-Toddler Social and Emotional Assessment, Parent Form.
+    // © 2006, 2002 Yale University and the University of Massachusetts.
+    // Published by Pearson (PsychCorp). Authors: Briggs-Gowan & Carter.
+    // Items reproduced in English and Spanish from the 2010 parent form.
+    //
+    // 42 items: 31 Problem, 11 Competence (starred on the paper form).
+    // Items 19 and 27 carry an "N" option for no contact with other children,
+    // which is recorded as missing rather than scored.
+    // Items A and B are caregiver-worry ratings and sit outside both totals.
+    function bitseaForm() {
+      return {
+        title: "BITSEA",
+        title_es: "BITSEA",
+        subtitle: "Brief Infant-Toddler Social and Emotional Assessment",
+        subtitle_es: "Evaluación socioemocional breve para bebés y niños pequeños",
+        audience: "parent",
+        allowSkip: false,
+        needsAgeSex: true,
+        hasSpanish: true,
+        scale: ["Not true / Rarely", "Somewhat true / Sometimes", "Very true / Often"],
+        scale_es: ["No es cierto / Rara vez", "Un poco cierto / A veces", "Muy cierto / Frecuentemente"],
+        scaleScores: [0, 1, 2],
+        worryScale: ["Not at all worried", "A little worried", "Worried", "Very worried"],
+        worryScale_es: ["No estoy preocupada/o", "Un poco preocupada/o", "Preocupada/o", "Muy preocupada/o"],
+        questions: [
+          { id: "bt01", bank: "competence", flag: true,  text: "Shows pleasure when he or she succeeds (for example, claps for self).", text_es: "Se alegra cuando tiene éxito haciendo algo (por ejemplo, se aplaude a sí mismo/a)." },
+          { id: "bt02", bank: "problem",                 text: "Gets hurt so often that you can't take your eyes off him or her.", text_es: "Se lastima tan a menudo que no puede usted dejar de vigilarlo/la." },
+          { id: "bt03", bank: "problem",                 text: "Seems nervous, tense, or fearful.", text_es: "Parece estar nervioso/a, tenso/a o tener miedo." },
+          { id: "bt04", bank: "problem",                 text: "Is restless and can't sit still.", text_es: "No se queda quieto/a ni puede estar sentado/a sin moverse." },
+          { id: "bt05", bank: "competence",              text: "Follows rules.", text_es: "Sigue las reglas." },
+          { id: "bt06", bank: "problem",                 text: "Wakes up at night and needs help to fall asleep again.", text_es: "Se despierta en la noche y necesita ayuda para volverse a dormir." },
+          { id: "bt07", bank: "problem",                 text: "Cries or has a tantrum until he or she is exhausted.", text_es: "Llora o hace berrinche/tiene un ataque de cólera/enfado hasta que se agota." },
+          { id: "bt08", bank: "problem",                 text: "Is afraid of certain places, animals or things.", text_es: "Le tiene miedo a ciertos lugares, animales o cosas." },
+          { id: "bt09", bank: "problem",   flag: true,   text: "Has less fun than other children.", text_es: "Se divierte menos que otros niños/as." },
+          { id: "bt10", bank: "competence", flag: true,  text: "Looks for you (or other parent) when upset.", text_es: "Busca a mamá o papá cuando está ansioso/a." },
+          { id: "bt11", bank: "problem",                 text: "Cries or hangs onto you when you try to leave.", text_es: "Llora o la/lo agarra cuando usted trata de irse." },
+          { id: "bt12", bank: "problem",                 text: "Worries a lot or is very serious.", text_es: "Se preocupa mucho o es muy serio/a." },
+          { id: "bt13", bank: "competence", flag: true,  text: "Looks right at you when you say his or her name.", text_es: "Lo/la mira directamente cuando usted dice su nombre." },
+          { id: "bt14", bank: "problem",   flag: true,   text: "Does not react when hurt.", text_es: "No reacciona cuando se lastima." },
+          { id: "bt15", bank: "competence", flag: true,  text: "Is affectionate with loved ones.", text_es: "Es cariñoso/a con sus seres queridos." },
+          { id: "bt16", bank: "problem",                 text: "Won't touch some objects because of how they feel.", text_es: "No toca algunos objetos por su textura o su consistencia." },
+          { id: "bt17", bank: "problem",                 text: "Has trouble falling asleep or staying asleep.", text_es: "Tiene problemas para dormirse o para quedarse dormido/a." },
+          { id: "bt18", bank: "problem",                 text: "Runs away in public places.", text_es: "Se escapa en lugares públicos." },
+          { id: "bt19", bank: "competence", noContact: true, text: "Plays well with other children (not including brother/sister).", text_es: "Juega bien con otros/as niños/as (sin incluir a sus hermanos/as)." },
+          { id: "bt20", bank: "competence",              text: "Can pay attention for a long time (other than when watching TV).", text_es: "Puede prestar atención por mucho tiempo (no incluye cuando está viendo la TV)." },
+          { id: "bt21", bank: "problem",   flag: true,   text: "Has trouble adjusting to changes.", text_es: "Tiene dificultades en adaptarse a cambios." },
+          { id: "bt22", bank: "competence", flag: true,  text: "Tries to help when someone is hurt (for example, gives a toy).", text_es: "Trata de ayudar cuando alguien está lastimado/a (por ejemplo, le da un juguete)." },
+          { id: "bt23", bank: "problem",                 text: "Often gets very upset.", text_es: "Se enoja frecuentemente." },
+          { id: "bt24", bank: "problem",                 text: "Gags or chokes on food.", text_es: "Le da asco o se ahoga con la comida." },
+          { id: "bt25", bank: "competence", flag: true,  text: "Imitates playful sounds when you ask him or her to.", text_es: "Imita sonidos juguetones cuando usted se lo pide." },
+          { id: "bt26", bank: "problem",                 text: "Refuses to eat.", text_es: "Se niega a comer." },
+          { id: "bt27", bank: "problem", noContact: true, text: "Hits, shoves, kicks, or bites children (not including brother/sister).", text_es: "Pega, empuja, patea o muerde a otros/as niños/as (sin incluir a sus hermanos/as)." },
+          { id: "bt28", bank: "problem",                 text: "Is destructive. Breaks or ruins things on purpose.", text_es: "Es destructivo/a. Rompe o destruye cosas a propósito." },
+          { id: "bt29", bank: "competence", flag: true,  text: "Points to show you something far away.", text_es: "Señala para enseñarle algo que está lejos." },
+          { id: "bt30", bank: "problem",                 text: "Hits, bites or kicks you (or other parent).", text_es: "Pega, muerde o le da patadas a papá o mamá." },
+          { id: "bt31", bank: "competence", flag: true,  text: "Hugs or feeds dolls or stuffed animals.", text_es: "Abraza o le da de comer a sus muñecas o a sus peluches." },
+          { id: "bt32", bank: "problem",                 text: "Seems very unhappy, sad, depressed, or withdrawn.", text_es: "Parece infeliz, triste, deprimido/a o distanciado/a." },
+          { id: "bt33", bank: "problem",                 text: "Purposely tries to hurt you (or other parent).", text_es: "Trata de lastimarla/lo a propósito." },
+          { id: "bt34", bank: "problem",                 text: "When upset, gets very still, freezes, or doesn't move.", text_es: "Cuando se enoja, se pone muy quieto, se congela o no se mueve." },
+          { id: "bt35", bank: "problem",   flag: true,   text: "Puts things in a special order over and over and gets upset if he or she is interrupted.", text_es: "Pone las cosas en un orden especial una y otra vez y se enoja si se le interrumpe." },
+          { id: "bt36", bank: "problem",   flag: true,   text: "Repeats the same action or phrase over and over without enjoyment.", text_es: "Repite la misma acción o frase una y otra vez sin parecer disfrutarlo." },
+          { id: "bt37", bank: "problem",   flag: true,   text: "Repeats a particular movement over and over (like rocking, spinning).", text_es: "Repite un movimiento en particular, una y otra vez, como dar vueltas o mecerse." },
+          { id: "bt38", bank: "problem",   flag: true,   text: "Spaces out. Is totally unaware of what's happening around him or her.", text_es: "Está fuera de onda/no de este mundo/distraído. No se da cuenta de lo que está pasando a su alrededor." },
+          { id: "bt39", bank: "problem",   flag: true,   text: "Does not make eye contact.", text_es: "No lo/la mira directamente a los ojos." },
+          { id: "bt40", bank: "problem",   flag: true,   text: "Avoids physical contact.", text_es: "Evita el contacto físico." },
+          { id: "bt41", bank: "problem",                 text: "Hurts self on purpose (for example, bangs his or her head).", text_es: "Se lastima a él/ella mismo/a a propósito, como golpearse en la cabeza." },
+          { id: "bt42", bank: "problem",                 text: "Eats or drinks things that are not edible (like paper or paint).", text_es: "Come o toma cosas que no son comestibles, como papel o pintura." },
+          { id: "btWA", bank: "worry", text: "How worried are you about your child's behavior, emotions, or relationships?", text_es: "¿Cuán preocupada/o está usted sobre el comportamiento, las emociones y las relaciones de su hijo/a?" },
+          { id: "btWB", bank: "worry", text: "How worried are you about your child's language development?", text_es: "¿Cuán preocupada/o está usted sobre el desarrollo del lenguaje de su hijo/a?" },
+        ],
+      };
+    }
+
+    // Cut scores from the BITSEA Parent Score Summary, by adjusted age band
+    // and sex. Problem: at or above the cut is a Possible Problem (75th
+    // percentile). Competence: at or below the cut is a Possible Deficit/Delay
+    // (15th percentile). Published norms stop at 35 months.
+    const BITSEA_CUTS = [
+      { min: 12, max: 17, problem: { girls: 13, boys: 13 }, competence: { girls: 12, boys: 12 } },
+      { min: 18, max: 23, problem: { girls: 13, boys: 15 }, competence: { girls: 14, boys: 14 } },
+      { min: 24, max: 29, problem: { girls: 14, boys: 15 }, competence: { girls: 15, boys: 14 } },
+      { min: 30, max: 35, problem: { girls: 12, boys: 14 }, competence: { girls: 16, boys: 14 } },
+    ];
+
+    // The manual permits leaving at most this many items missing per scale.
+    const BITSEA_MAX_MISSING_PROBLEM = 5;
+    const BITSEA_MAX_MISSING_COMPETENCE = 2;
+
+    function bitseaCuts(ageMonths, sex) {
+      if (!ageMonths || !sex) return null;
+      const band = BITSEA_CUTS.filter((b) => ageMonths >= b.min && ageMonths <= b.max)[0];
+      if (!band) return null;
+      const key = sex === "F" ? "girls" : "boys";
+      return { band, problem: band.problem[key], competence: band.competence[key] };
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Caregiver-facing copy, per language. Only the screens a caregiver
+    // actually sees are translated; the clinician setup and results stay in
+    // English. An instrument offers Spanish only when its bank carries
+    // text_es for every item.
+    // ─────────────────────────────────────────────────────────────
+    const UI = {
+      en: {
+        start: "Start", back: "Back", next: "Next", finish: "Finish",
+        question: (i, n) => "Question " + i + " of " + n,
+        halfway: "Halfway there.", lastOne: "Last one.",
+        skip: "I'd rather not answer this", skipped: "Skipped — tap an answer to change",
+        noContact: "No contact with other children",
+        thanksTitle: "Thank you so much!",
+        thanksLead: "You're all done — every question is answered.",
+        thanksBody: "Sharing this takes real trust, and it genuinely helps us understand your family and how to be useful to you. We appreciate your time.",
+        handBackTitle: "Please hand the device back",
+        handBackBody: "Your answers have been recorded. Your provider will go through them with you.",
+        providerAccess: "Provider access",
+      },
+      es: {
+        start: "Comenzar", back: "Atrás", next: "Siguiente", finish: "Terminar",
+        question: (i, n) => "Pregunta " + i + " de " + n,
+        halfway: "Vas por la mitad.", lastOne: "La última.",
+        skip: "Prefiero no responder", skipped: "Omitida — toque una respuesta para cambiar",
+        noContact: "Sin contacto con otros niños/as",
+        thanksTitle: "¡Muchas gracias!",
+        thanksLead: "Ya terminó — respondió todas las preguntas.",
+        thanksBody: "Compartir esto requiere mucha confianza, y de verdad nos ayuda a entender a su familia y cómo serle útil. Agradecemos su tiempo.",
+        handBackTitle: "Por favor devuelva el dispositivo",
+        handBackBody: "Sus respuestas quedaron registradas. Su proveedor las revisará con usted.",
+        providerAccess: "Acceso del proveedor",
+      },
+    };
+
     // ─────────────────────────────────────────────────────────────
     // Scoring
     //
@@ -713,6 +845,101 @@
       };
     }
 
+    // ── BITSEA ──
+    // Problem and Competence totals, compared against age-band and sex cut
+    // scores. Items answered "N" (no contact with other children) count as
+    // missing, not as zero. The manual declines to compute a total when more
+    // than 5 Problem or 2 Competence items are missing.
+    function scoreBITSEA(form, answers, meta) {
+      const raw = (q) => {
+        const v = answers[q.id];
+        if (v === undefined || v === null || v === "skip" || v === "N") return null;
+        return typeof v === "number" ? v : null;
+      };
+      const tally = (bank) => {
+        const items = form.questions.filter((q) => q.bank === bank);
+        let sum = 0, missing = 0, max = 0;
+        items.forEach((q) => {
+          const s = raw(q);
+          max += 2;
+          if (s === null) missing += 1; else sum += s;
+        });
+        return { sum, missing, max, n: items.length };
+      };
+
+      const prob = tally("problem");
+      const comp = tally("competence");
+      const probOK = prob.missing <= BITSEA_MAX_MISSING_PROBLEM;
+      const compOK = comp.missing <= BITSEA_MAX_MISSING_COMPETENCE;
+
+      const ageMonths = meta && meta.ageMonths ? parseInt(meta.ageMonths, 10) : null;
+      const sex = meta && meta.sex ? meta.sex : null;
+      const cuts = bitseaCuts(ageMonths, sex);
+
+      const rows = [
+        { label: "Problem Total", value: probOK ? prob.sum : "—", max: prob.max, tone: probOK && cuts && prob.sum >= cuts.problem ? "alert" : "calm", emphasis: true },
+        { label: "Competence Total", value: compOK ? comp.sum : "—", max: comp.max, tone: compOK && cuts && comp.sum <= cuts.competence ? "alert" : "calm", emphasis: true },
+      ];
+
+      // Caregiver worry ratings sit outside both totals.
+      form.questions.filter((q) => q.bank === "worry").forEach((q, i) => {
+        const v = answers[q.id];
+        rows.push({
+          label: (i === 0 ? "Worry — behavior/emotions" : "Worry — language"),
+          value: typeof v === "number" ? v + 1 : "—", max: 4, tone: typeof v === "number" && v >= 2 ? "watch" : "calm",
+        });
+      });
+
+      const alerts = [];
+      if (!probOK) alerts.push({ title: "Problem Total not calculated", tone: "watch", body: prob.missing + " Problem items are missing. The manual does not compute a Problem raw score when more than " + BITSEA_MAX_MISSING_PROBLEM + " are missing." });
+      if (!compOK) alerts.push({ title: "Competence Total not calculated", tone: "watch", body: comp.missing + " Competence items are missing. The manual does not compute a Competence raw score when more than " + BITSEA_MAX_MISSING_COMPETENCE + " are missing." });
+
+      if (!cuts) {
+        alerts.push({
+          title: ageMonths && (ageMonths < 12 || ageMonths > 35) ? "Outside the published norms" : "Age and sex needed for cut scores",
+          tone: "watch",
+          body: ageMonths && (ageMonths < 12 || ageMonths > 35)
+            ? "Published BITSEA norms cover 12–35 months; this child is " + ageMonths + " months. Child First uses author-supplied norms up to 48 months for follow-up, which are not built in here — score against the manual."
+            : "Enter the child's adjusted age in months and sex on the setup screen to compare these totals against the cut scores.",
+        });
+      } else {
+        if (probOK && prob.sum >= cuts.problem) alerts.push({ title: "Possible Problem", tone: "alert", body: "Problem Total " + prob.sum + " is at or above the cut score of " + cuts.problem + " for " + (sex === "F" ? "girls" : "boys") + " aged " + cuts.band.min + "–" + cuts.band.max + " months (75th percentile)." });
+        if (compOK && comp.sum <= cuts.competence) alerts.push({ title: "Possible Deficit / Delay", tone: "alert", body: "Competence Total " + comp.sum + " is at or below the cut score of " + cuts.competence + " for " + (sex === "F" ? "girls" : "boys") + " aged " + cuts.band.min + "–" + cuts.band.max + " months (15th percentile)." });
+      }
+
+      // Red-flag items: presence on Problem items, absence on Competence items.
+      const flags = [];
+      form.questions.filter((q) => q.flag).forEach((q, i) => {
+        const s = raw(q);
+        if (s === null) return;
+        const num = form.questions.indexOf(q) + 1;
+        if (q.bank === "problem" && s > 0) flags.push(num);
+        if (q.bank === "competence" && s === 0) flags.push(num);
+      });
+      if (flags.length >= 3) {
+        alerts.push({
+          title: "Autism-related items endorsed (" + flags.length + ")",
+          tone: "watch",
+          body: "Item" + (flags.length > 1 ? "s " : " ") + flags.join(", ") + ". The presence of several Problem behaviours and/or the absence of several Competence behaviours on these items may be associated with autism spectrum disorders. Consider pairing with the M-CHAT-R.",
+        });
+      }
+
+      return {
+        itemScore: (q) => (q.bank === "worry" ? null : raw(q)),
+        headline: {
+          label: "Problem Total", value: probOK ? prob.sum : 0, max: prob.max,
+          verdict: !cuts
+            ? { label: "No cut score", tone: "calm", note: "Enter adjusted age in months and sex on the setup screen to compare against the published cut scores." }
+            : (probOK && prob.sum >= cuts.problem)
+              ? { label: "Possible Problem", tone: "alert", note: "At or above the cut score of " + cuts.problem + ". Competence Total is shown below and is judged separately." }
+              : { label: "Below the cut score", tone: "calm", note: "Below the Problem cut score of " + cuts.problem + ". Check the Competence Total separately — a low Competence score is its own finding." },
+        },
+        rows,
+        alerts,
+        followUps: [],
+      };
+    }
+
     // Condensed follow-up prompts from the Child First Brief Guide to the PQ.
     // These are conversation openers for the clinician, never read aloud as a script.
     const PQ_FOLLOW_UP = {
@@ -772,6 +999,28 @@
         meta: ["20 questions", "About 3 minutes", "Yes or no", "Ages 16–30 months"],
         parentNote: "Think about how your child usually behaves. If you have seen your child do something a few times but they do not usually do it, answer no.",
         copyright: "M-CHAT-R™ © 2009 Diana Robins, Deborah Fein, & Marianne Barton. Used with items and item order unmodified, as the instrument's terms require.",
+      },
+      {
+        id: "bitsea",
+        short: "BITSEA",
+        card: "BITSEA",
+        eyebrow: "Social & Emotional",
+        tag: "12–35 months",
+        accent: "#B4552E",
+        accentVar: "var(--alert)",
+        audience: "parent",
+        build: bitseaForm,
+        score: scoreBITSEA,
+        needsAgeSex: true,
+        hasSpanish: true,
+        blurb: "Brief Infant-Toddler Social and Emotional Assessment. Problem behaviours and social-emotional competence, scored against age and sex norms.",
+        purpose: "These questions ask about the everyday things your very young child does — how they play, sleep, eat, handle upset, and connect with you — because at this age those small everyday things are how we see both what is going well and what is hard.",
+        purpose_es: "Estas preguntas son sobre las cosas de todos los días que hace su niño/a pequeño/a — cómo juega, duerme, come, maneja el enojo y se conecta con usted — porque a esta edad esas cosas cotidianas nos muestran tanto lo que va bien como lo que es difícil.",
+        meta: ["42 questions", "About 7 minutes", "Past month", "Strengths and difficulties"],
+        meta_es: ["42 preguntas", "Unos 7 minutos", "El mes pasado", "Fortalezas y dificultades"],
+        parentNote: "Think about the LAST MONTH. Many of these describe normal feelings and behaviours — this asks about strengths as much as difficulties.",
+        parentNote_es: "Piense en el MES PASADO. Muchas de estas describen sentimientos y comportamientos normales — se pregunta tanto por las fortalezas como por las dificultades.",
+        copyright: "BITSEA™ © 2006, 2002 Yale University and the University of Massachusetts. Published by Pearson (PsychCorp). Authors: Briggs-Gowan & Carter.",
       },
       {
         id: "psi",
@@ -964,7 +1213,8 @@
     // Parent thank-you — the last thing a caregiver sees. No scores, no
     // interpretation, nothing that could be read as a verdict on them.
     // ─────────────────────────────────────────────────────────────
-    function ParentThankYou({ onUnlock }) {
+    function ParentThankYou({ onUnlock, t }) {
+      const s = t || UI.en;
       const [celebrate, setCelebrate] = useState(false);
       useEffect(() => {
         const t = setTimeout(() => setCelebrate(true), 180);
@@ -985,20 +1235,19 @@
 
             <div className="text-5xl mb-4 cib-bloom" role="img" aria-label="Celebration">🎉</div>
 
-            <h1 className="cib-display text-4xl leading-tight mb-4 cib-rise">Thank you so much!</h1>
+            <h1 className="cib-display text-4xl leading-tight mb-4 cib-rise">{s.thanksTitle}</h1>
 
             <p className="text-lg leading-relaxed mb-3 cib-rise" style={{ color: "var(--cream-on-dark)" }}>
-              You're all done — every question is answered.
+              {s.thanksLead}
             </p>
             <p className="text-base leading-relaxed cib-rise" style={{ color: "var(--soft-on-dark)" }}>
-              Sharing this takes real trust, and it genuinely helps us understand
-              your family and how to be useful to you. We appreciate your time.
+              {s.thanksBody}
             </p>
 
             <div className="mt-10 w-full rounded-2xl p-5 cib-rise" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}>
-              <p className="text-base font-bold mb-1">Please hand the device back</p>
+              <p className="text-base font-bold mb-1">{s.handBackTitle}</p>
               <p className="text-sm" style={{ color: "var(--soft-on-dark)" }}>
-                Your answers have been recorded. Your provider will go through them with you.
+                {s.handBackBody}
               </p>
             </div>
 
@@ -1007,7 +1256,7 @@
               className="mt-8 text-xs font-bold uppercase tracking-wider transition-colors hover:text-white"
               style={{ color: "rgba(168,187,175,0.75)", letterSpacing: "0.12em" }}
             >
-              Provider access
+              {s.providerAccess}
             </button>
           </div>
         </div>
@@ -1110,7 +1359,8 @@
       const [showEditor, setShowEditor] = useState(false);
       const [autoAdvance, setAutoAdvance] = useState(true);
       const [gateReturn, setGateReturn] = useState("results");
-      const [meta, setMeta] = useState({ childName: "", childId: "", caregiverName: "", clinician: "", date: "", interval: "" });
+      const [meta, setMeta] = useState({ childName: "", childId: "", caregiverName: "", clinician: "", date: "", interval: "", ageMonths: "", sex: "" });
+      const [lang, setLang] = useState("en");
       const loadedRef = useRef(false);
       const advanceRef = useRef(null);
       const FORM_KEY = STORAGE_PREFIX + instrument.id + ":form:v1";
@@ -1153,7 +1403,15 @@
 
       const askable = form.questions.filter((q) => q.text.trim().length > 0);
       const current = askable[idx];
-      const scored = instrument.score(form, answers);
+      // Caregiver-facing copy follows `lang`; clinician screens stay English.
+      const t = UI[lang] || UI.en;
+      const qText = (q) => (lang === "es" && q.text_es ? q.text_es : q.text);
+      const scaleFor = (q) => {
+        if (q && q.bank === "worry") return (lang === "es" && form.worryScale_es) ? form.worryScale_es : (form.worryScale || form.scale);
+        return (lang === "es" && form.scale_es) ? form.scale_es : form.scale;
+      };
+      const pick = (en, es) => (lang === "es" && es ? es : en);
+      const scored = instrument.score(form, answers, meta);
 
       // ─── flow ───
       const startSession = () => {
@@ -1208,11 +1466,13 @@
       const answerLabel = (q) => {
         const v = answers[q.id];
         if (v === "skip") return "Prefer not to answer";
+        if (v === "N") return "N — no contact with other children";
         if (v === undefined || v === null) return "Not answered";
         if (q.type === "yesno") return v === 0 ? "Yes" : "No";
         if (q.type === "choice" && Array.isArray(q.choices)) return q.choices[v] ? q.choices[v].label : "Not answered";
         if (q.type === "text") return typeof v === "string" && v.trim() ? v.trim() : "Not answered";
-        return form.scale[v] !== undefined ? form.scale[v] : "Not answered";
+        const sc = q.bank === "worry" ? (form.worryScale || form.scale) : form.scale;
+        return sc[v] !== undefined ? sc[v] : "Not answered";
       };
 
       const summaryText = () => {
@@ -1224,6 +1484,8 @@
           "Clinician: " + (meta.clinician || "(not provided)"),
         ];
         if (meta.interval) lines.push("Interval: " + meta.interval);
+        if (instrument.needsAgeSex) lines.push("Adjusted age: " + (meta.ageMonths || "?") + " months  |  Sex: " + (meta.sex === "F" ? "Girl" : meta.sex === "M" ? "Boy" : "?"));
+        if (instrument.hasSpanish) lines.push("Administered in: " + (lang === "es" ? "Spanish" : "English"));
         lines.push("");
         if (scored.headline) {
           lines.push(scored.headline.label + ": " + scored.headline.value + " of " + scored.headline.max);
@@ -1312,7 +1574,23 @@
                   <input value={meta.caregiverName} onChange={(e) => setMeta({ ...meta, caregiverName: e.target.value })} placeholder="Caregiver name" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
                   <input value={meta.clinician} onChange={(e) => setMeta({ ...meta, clinician: e.target.value })} placeholder="Clinician" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
                   <input value={meta.date} onChange={(e) => setMeta({ ...meta, date: e.target.value })} type="date" aria-label="Date of assessment" className="col-span-2 rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  {instrument.needsAgeSex && (
+                    <React.Fragment>
+                      <input value={meta.ageMonths} onChange={(e) => setMeta({ ...meta, ageMonths: e.target.value.replace(/\D/g, "") })} placeholder="Adjusted age (months)" inputMode="numeric" aria-label="Adjusted age in months" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                      <select value={meta.sex} onChange={(e) => setMeta({ ...meta, sex: e.target.value })} aria-label="Sex" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }}>
+                        <option value="">Sex</option>
+                        <option value="M">Boy</option>
+                        <option value="F">Girl</option>
+                      </select>
+                    </React.Fragment>
+                  )}
                 </div>
+                {instrument.needsAgeSex && (
+                  <p className="text-xs mb-3" style={{ color: "var(--ink-soft)" }}>
+                    Age and sex select the cut scores. Adjust for prematurity first if the child was
+                    born four or more weeks early.
+                  </p>
+                )}
                 <div className="flex gap-2">
                   {["Baseline", "6-months", "Discharge"].map((iv) => (
                     <button key={iv} onClick={() => setMeta({ ...meta, interval: meta.interval === iv ? "" : iv })}
@@ -1329,6 +1607,24 @@
               {/* Handoff options */}
               <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
                 <Eyebrow>Handoff</Eyebrow>
+                {instrument.hasSpanish && (
+                  <div className="mb-4">
+                    <p className="text-sm mb-2" style={{ color: "var(--ink-soft)" }}>
+                      <strong style={{ color: "var(--spruce)" }}>Language</strong> — what the caregiver sees.
+                    </p>
+                    <div className="flex gap-2">
+                      {[["en", "English"], ["es", "Español"]].map(([code, label]) => (
+                        <button key={code} onClick={() => setLang(code)}
+                          className="flex-1 rounded-lg py-2 text-sm font-bold transition-all"
+                          style={lang === code
+                            ? { background: instrument.accent, color: "var(--cream-on-dark)" }
+                            : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="checkbox" checked={autoAdvance} onChange={(e) => setAutoAdvance(e.target.checked)} className="mt-1 w-5 h-5 flex-shrink-0" />
                   <span className="text-sm" style={{ color: "var(--ink-soft)" }}>
@@ -1401,14 +1697,14 @@
         return (
           <AssessmentIntro
             eyebrow={instrument.eyebrow}
-            title={form.title}
-            subtitle={form.subtitle}
-            purpose={instrument.purpose}
-            note={instrument.parentNote}
-            meta={instrument.meta}
+            title={pick(form.title, form.title_es)}
+            subtitle={pick(form.subtitle, form.subtitle_es)}
+            purpose={pick(instrument.purpose, instrument.purpose_es)}
+            note={pick(instrument.parentNote, instrument.parentNote_es)}
+            meta={pick(instrument.meta, instrument.meta_es)}
             accent={instrument.accentVar}
-            beginLabel="Start"
-            backLabel="Back"
+            beginLabel={t.start}
+            backLabel={t.back}
             onBegin={() => setMode("fill")}
             onBack={() => setMode("setup")}
           />
@@ -1421,8 +1717,9 @@
         const value = answers[current.id];
         const half = Math.floor(askable.length / 2);
         const encouragement =
-          idx + 1 === half && askable.length >= 12 ? "Halfway there." :
-          idx + 1 === askable.length ? "Last one." : null;
+          idx + 1 === half && askable.length >= 12 ? t.halfway :
+          idx + 1 === askable.length ? t.lastOne : null;
+        const activeScale = scaleFor(current);
 
         const optionButton = (label, selected, onClick, key, hint) => (
           <button key={key} onClick={onClick}
@@ -1442,7 +1739,7 @@
               <div className="mb-7">
                 <div className="flex justify-between items-baseline mb-2">
                   <span className="text-sm font-bold" style={{ color: "var(--soft-on-dark)" }}>
-                    Question {idx + 1} of {askable.length}
+                    {t.question(idx + 1, askable.length)}
                   </span>
                   {encouragement && <span className="text-sm" style={{ color: "var(--lamplight)" }}>{encouragement}</span>}
                 </div>
@@ -1459,7 +1756,7 @@
                 ) : null}
 
                 <h1 className="cib-display text-2xl leading-snug mb-3" style={{ color: "var(--cream-on-dark)" }}>
-                  {current.text}
+                  {qText(current)}
                 </h1>
                 {current.example ? (
                   <p className="text-base leading-relaxed mb-6" style={{ color: "var(--soft-on-dark)" }}>{current.example}</p>
@@ -1481,7 +1778,8 @@
                     style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }} />
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {form.scale.map((label, i) => optionButton(label, value === i, () => choose(i), i))}
+                    {activeScale.map((label, i) => optionButton(label, value === i, () => choose(i), i))}
+                    {current.noContact && optionButton(t.noContact, value === "N", () => choose("N"), "N")}
                   </div>
                 )}
 
@@ -1489,7 +1787,7 @@
                   <button onClick={() => choose("skip")}
                     className="mt-4 self-center text-sm underline transition-colors hover:text-white"
                     style={{ color: value === "skip" ? "var(--lamplight)" : "var(--soft-on-dark)" }}>
-                    {value === "skip" ? "Skipped — tap an answer to change" : "I'd rather not answer this"}
+                    {value === "skip" ? t.skipped : t.skip}
                   </button>
                 )}
               </div>
@@ -1497,11 +1795,11 @@
               <div className="flex gap-3 mt-8">
                 <button onClick={goBack} className="rounded-2xl py-4 px-6 text-base font-bold transition-colors hover:bg-white/10"
                   style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
-                  Back
+                  {t.back}
                 </button>
                 <button onClick={goNext} className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-opacity-90"
                   style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
-                  {idx + 1 >= askable.length ? "Finish" : "Next"}
+                  {idx + 1 >= askable.length ? t.finish : t.next}
                 </button>
               </div>
             </div>
@@ -1511,7 +1809,7 @@
 
       // ═══ THANKS (parent) ═══
       if (mode === "thanks") {
-        return <ParentThankYou onUnlock={() => { setGateReturn("results"); setMode("gate"); }} />;
+        return <ParentThankYou t={t} onUnlock={() => { setGateReturn("results"); setMode("gate"); }} />;
       }
 
       // ═══ GATE ═══
