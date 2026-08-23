@@ -1,118 +1,131 @@
 # Child First Assessment Recorder
 
-Phone-first digital response recorders and raw score calculators for the clinical
-instruments used in the Child First program. Built to be handed to a caregiver on
-a phone: one question at a time, large tap targets, no scrolling through a grid of
-tiny radio buttons on a paper form.
+Phone-first assessment tools for the Child First program, built to be **handed to a
+caregiver**. One question at a time, large tap targets, plain language, and a warm
+close — with scores kept behind a provider code so a caregiver never sees a number
+attached to their family.
 
 The tools **record responses and total them**. They do not interpret. Standard
-scores, percentiles, and every clinical decision remain the responsibility of the
-assessing clinician, working from the official manual for each instrument.
+scores, percentiles, cut-points, and every clinical decision remain the
+responsibility of the clinician, working from the official manual for each
+instrument.
 
 ## What's included
 
-| Instrument | Items | What it captures |
-| --- | --- | --- |
-| **PSI-4-SF** — Parenting Stress Index, 4th Ed., Short Form | 36 | Parent Distress, Parent-Child Dysfunctional Interaction, Difficult Child |
-| **PKBS-2** — Preschool and Kindergarten Behavior Scales, 2nd Ed. | 76 | Social Skills (Cooperation, Interaction, Independence) and Problem Behavior (Externalizing, Internalizing) |
-| **CESD-R** — Center for Epidemiologic Studies Depression Scale, Revised | 20 | Caregiver depression across nine symptom domains |
-| **CCA** — Comprehensive Child First Assessment | 11 sections | Risk and protective factors, mental status, developmental and health history, formulation, treatment recommendations |
+| Instrument | Items | Completed by | What it captures |
+| --- | --- | --- | --- |
+| **PQ** — Parent Questionnaire | 33 | Caregiver | Family risk and protective factors across 14 domains |
+| **M-CHAT-R** — Modified Checklist for Autism in Toddlers, Revised | 20 | Caregiver | Autism spectrum risk, ages 16–30 months |
+| **PSI-4-SF** — Parenting Stress Index, Short Form | 36 | Caregiver | Parent Distress, Parent-Child Dysfunctional Interaction, Difficult Child |
+| **PKBS-2** — Preschool and Kindergarten Behavior Scales | 76 | Caregiver | Social Skills and Problem Behavior |
+| **CESD-R** — CES Depression Scale, Revised | 20 | Caregiver | Caregiver depression across nine symptom domains |
+| **CCA** — Comprehensive Child First Assessment | 11 sections | Clinician | Risk and protective factors, mental status, developmental and health history, formulation, treatment recommendations |
+
+## The handoff
+
+Everything about the caregiver-facing flow is built around one moment: giving
+someone your phone and asking them to answer questions about the hardest parts of
+their life.
+
+**Setup → Title card → Questions → Thank you → 🔒 Provider snapshot**
+
+- **The Start button is the first thing on the setup screen.** Big, dark, unmissable,
+  above every other control. No scrolling past a question editor to find it.
+- **The question editor is collapsed by default.** A caregiver must never land in a
+  screen full of move-up arrows and delete buttons. It's behind a disclosure at the
+  bottom, for when you actually need it.
+- **A title card opens every instrument** — one sentence on what it covers and why it
+  matters, plus item count, response scale, and how long it takes. Nobody should be
+  handed a phone without knowing what they're about to be asked.
+- **One tap per question.** Auto-advance is on by default: tapping an answer moves to
+  the next question, so a caregiver taps once instead of twice. Turn it off in Handoff
+  if you'd rather they confirm each one.
+- **"I'd rather not answer this"** appears on the PQ. The instrument is explicitly
+  about risks *the family feels comfortable sharing*, so a real skip option is truer
+  to it than an implied refusal. Skips are recorded as skips and never scored as No.
+  The M-CHAT-R has no skip — its terms require it be used in its entirety.
+- **Progress is honest and encouraging** — "Question 12 of 33" with a bar, and a quiet
+  "Halfway there" / "Last one" at the milestones.
+- **Back always works**, so a caregiver can fix an answer without starting over.
+- **The thank-you screen is the terminus.** Confetti, a drawn checkmark, 🎉, and real
+  gratitude — no score, no interpretation, nothing that reads as a verdict on their
+  parenting. It asks them to hand the device back. Motion is skipped entirely for
+  anyone whose system requests reduced motion.
+
+## The provider code
+
+Results sit behind a 4-digit code (**`1234`** by default). From the thank-you screen,
+"Provider access" opens a keypad; the wrong code refuses and clears.
+
+**This is a courtesy lock, not a security boundary.** The code lives in the page's
+JavaScript, so anyone who views source can read it. It exists to stop a caregiver
+holding the phone from tapping into the scores — which is exactly the threat it needs
+to handle — and nothing more. Do not treat it as protecting anything from a
+determined reader.
+
+To change it, edit `CLINICIAN_CODE` near the top of the script block in `index.html`.
 
 ## How scoring works
 
-Each recorder computes **raw totals only**, following the scoring sheet for that
-instrument.
+Each instrument computes **raw totals only**.
 
-- **PSI-4-SF** — five-point scale, Strongly Agree scores 5 down to Strongly Disagree
-  scores 1. Two items use their own custom answer sets with fixed scores. Subscale
-  totals plus an overall Total Stress figure.
-- **PKBS-2** — four-point scale, Never scores 0 up to Often scores 3. Subscale totals
-  plus Social Skills and Problem Behavior composites. Items can be filtered to one
-  scale or the other before handing the phone over.
-- **CESD-R** — five response options mapped to **0 / 1 / 2 / 3 / 3**. The top two
-  options ("5–7 days" and "nearly every day for 2 weeks") both score 3, matching the
-  official score sheet rather than the 0–4 column headers printed on the form. Nine
-  domain subtotals and a total out of 60, scored against both cutoffs: further
-  investigation above 10, clinical threshold above 16. **Any endorsement of item 14 or
-  15 raises a suicidal-ideation flag regardless of the total** — that flag calls for
-  further assessment on its own.
-- **CCA** — not scored. Tracks required fields, shows per-section completion, reveals
-  conditional follow-ups as they become relevant, and produces a summary to paste into
-  the clinical record.
-
-Every instrument opens on a title card: one sentence on what it covers and why, plus
-item count, response scale, and timeframe, so whoever is administering it knows what
-they are about to hand over.
+- **PQ** — 14 lettered sections, each worth at most 1 point, for a maximum of 14.
+  Most score 1 for *any* Yes. Two are reverse-scored: **C** (Employment and Education)
+  scores 1 only when all three are No, and **G** (Caregiver Support) scores 1 for a No.
+  A **positive screen** is 3 or more points, *or* any point in one of the five starred
+  auto-positive sections — B (Behavior and Feelings), D (Caregiver Feelings),
+  H (Household Safety), J (Substance Use), L (Child Welfare) — *or* any clinical
+  concern regardless of score. The snapshot surfaces condensed **follow-up prompts**
+  from the Child First Brief Guide for every section that scored: conversation
+  openers, never a script to read aloud.
+- **M-CHAT-R** — a response of **No** indicates risk on every item except 2, 5 and 12,
+  where **Yes** does. 0–2 low risk; 3–7 medium, administer the M-CHAT-R/F Follow-Up
+  interview on the failed items only, and refer if it stays at 2 or higher; 8–20 high,
+  where it is acceptable to bypass the Follow-Up and refer immediately. The snapshot
+  lists exactly which items to carry into the Follow-Up.
+- **PSI-4-SF** — five-point scale, Strongly Agree 5 down to Strongly Disagree 1, with
+  three custom-choice items carrying their own scores. Subscale totals plus Total Stress.
+- **PKBS-2** — four-point scale, Never 0 up to Often 3. Subscale totals plus Social
+  Skills and Problem Behavior composites.
+- **CESD-R** — five options mapped to **0/1/2/3/3**; the top two both score 3, per the
+  Child First score sheet rather than the 0–4 headers printed on the form. Nine domains
+  and a total out of 60, against both cutoffs (further investigation above 10, clinical
+  threshold above 16). **Any endorsement of item 14 or 15 raises a suicidal-ideation
+  alert regardless of the total.**
+- **CCA** — not scored. Tracks required fields, per-section completion, and conditional
+  follow-ups, and produces a summary for the record.
 
 ## Where the answers live
 
-Nothing is transmitted anywhere. There is no server, no analytics, and no network
-request carrying response data.
+Nothing is transmitted anywhere. No server, no analytics, no network request carrying
+a response.
 
-- **PSI-4-SF, PKBS-2, CESD-R** — answers exist only in the open browser tab. Closing
-  or reloading the page discards them. Copy the summary before you leave the results
-  screen. Only your *edits to the question bank* persist, in `localStorage`.
-- **CCA** — answers autosave to `localStorage` on the device, so a long assessment can
-  be paused and resumed. They stay on that device and in that browser. "Clear all
-  answers" on the home screen erases them.
+- **The five caregiver instruments** — answers exist only in the open tab. Closing or
+  reloading discards them. Copy the snapshot before leaving the results screen. Only
+  your *edits to a question bank* persist, in `localStorage`.
+- **CCA** — answers autosave to `localStorage` so a long assessment can be paused and
+  resumed. They stay on that device, in that browser. "Clear all answers" erases them.
 
-Because storage is per-device and per-browser, treat these tools as a recording
-convenience, not as a record of anything. The clinical record is the record.
+Treat these as a recording convenience, not as a record. The clinical record is the
+record.
 
-## Running it
+## Instrument licensing — read before deploying publicly
 
-Static HTML. No build step, no package install, no server code.
+**M-CHAT-R/F.** © 2009 Diana Robins, Deborah Fein, & Marianne Barton. Free for
+clinical, research, and educational use, and a practice may incorporate the stage-1
+items into its own records. But the terms require written permission from the authors
+to reproduce it electronically *for use by others*, or to distribute your page outside
+your practice. **A public deployment of this repository is arguably that.** Either
+request a licensing agreement from DianaLRobins@gmail.com or keep the deployment
+access-controlled. Items and item order are reproduced unmodified and the copyright
+notice travels with the instrument, as the terms also require.
 
-```sh
-git clone https://github.com/skyar123/Childfirst-assessment-recorder.git
-cd Childfirst-assessment-recorder
-python3 -m http.server 8000
-```
+**PSI-4-SF** is published by Psychological Assessment Resources, Inc.; **PKBS-2** by
+PRO-ED, Inc. Both are copyrighted. These pages record responses and do not reproduce
+their manuals, norms, or conversion tables — convert raw scores using the official
+materials.
 
-Then open <http://localhost:8000>.
-
-Opening `index.html` straight from the filesystem mostly works, but serving over HTTP
-is more faithful to production. React, ReactDOM, Babel Standalone, and Tailwind load
-from CDNs, so a first load needs a network connection.
-
-## Files
-
-```
-index.html           PSI-4-SF, PKBS-2 and CESD-R recorders, plus the dashboard
-cca-assessment.html  Comprehensive Child First Assessment questionnaire
-404.html             Not-found page
-images/logo.svg      Favicon
-netlify.toml         Publish config, security headers, redirects
-```
-
-`index.html` is a single-page React app; the three recorders it hosts are addressable
-directly at `#psi`, `#pkbs`, and `#cesdr`. The CCA is a separate page because it is a
-different kind of instrument — sections and conditional fields rather than a flat item
-list.
-
-Each page is self-contained: its markup, styles, question bank, and scoring all live in
-that one file, compiled in the browser by Babel. That is deliberate. A clinician can
-open a single file and read the whole instrument, and the tool keeps working with no
-toolchain to maintain.
-
-## Deploying
-
-Netlify serves the repository root as-is. `netlify.toml` sets the security headers,
-redirects the old `/assessments.html` path to the root, and defines a Content Security
-Policy scoped to the CDNs these pages actually use — `unpkg.com` for React and Babel,
-`cdn.tailwindcss.com` for Tailwind, and Google Fonts. The policy allows `'unsafe-eval'`
-because Babel Standalone compiles the JSX at runtime in the browser.
-
-Any static host works just as well.
-
-## About the instruments
-
-The PSI-4-SF is published by Psychological Assessment Resources, Inc. The PKBS-2 is
-published by PRO-ED, Inc. Both are copyrighted; these pages record responses to them
-and do not reproduce their manuals, norms, or scoring tables. Convert raw scores using
-the official materials.
-
-The CESD-R is in the public domain:
+**PQ** is Child First's own instrument. **CESD-R** is public domain:
 
 > Eaton, W. W., Smith, C., Ybarra, M., Muntaner, C., & Tien, A. (2004). Center for
 > Epidemiologic Studies Depression Scale: review and revision (CESD and CESD-R). In
@@ -120,4 +133,51 @@ The CESD-R is in the public domain:
 > Outcomes Assessment* (3rd ed.), Volume 3: Instruments for Adults, pp. 363–377.
 > Mahwah, NJ: Lawrence Erlbaum.
 
-The CESD-R is required at baseline, 6 months, and discharge.
+**Not included: BITSEA.** Its "Of Concern" cut-points are sex- and age-banded norms
+published only in the copyrighted manual. Without those tables a digital version could
+record responses but not score them, and a screen that shows a total with no cut-point
+invites misreading. Adding it needs the normative data.
+
+## Running it
+
+Static HTML. No build step, no install, no server code.
+
+```sh
+git clone https://github.com/skyar123/Childfirst-assessment-recorder.git
+cd Childfirst-assessment-recorder
+python3 -m http.server 8000
+```
+
+Then open <http://localhost:8000>. React, ReactDOM, Babel Standalone, and Tailwind
+load from CDNs, so a first load needs a network connection.
+
+## Files
+
+```
+index.html           All five caregiver instruments, plus the dashboard
+cca-assessment.html  Comprehensive Child First Assessment (clinician)
+404.html             Not-found page
+images/logo.svg      Favicon
+netlify.toml         Publish config, security headers, redirects
+```
+
+`index.html` is one React app. Everything that differs between instruments — question
+bank, scoring function, colour, copy — lives in the `INSTRUMENTS` registry, and a
+single `Recorder` component drives all of them. **Adding an instrument means adding a
+question bank, a scorer that returns `{ headline, rows, alerts, followUps }`, and a
+registry entry.** Nothing else changes.
+
+Each instrument is addressable directly: `#pq`, `#mchat`, `#psi`, `#pkbs`, `#cesdr`.
+The CCA is a separate page because it is a different kind of instrument — sections and
+conditional fields rather than a flat item list, and completed by the clinician.
+
+## Deploying
+
+Netlify serves the repository root as-is. `netlify.toml` sets security headers,
+redirects the legacy `/assessments.html` path to the root, and defines a Content
+Security Policy scoped to the CDNs these pages use. The policy allows `'unsafe-eval'`
+because Babel Standalone compiles the JSX in the browser.
+
+The pages are marked `noindex, nofollow`. Given the licensing note above and the fact
+that a public URL is all anyone needs, put the deployment behind Netlify password
+protection or an access control list rather than leaving it open.

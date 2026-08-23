@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Assessment Recorders</title>
-  <meta name="description" content="Phone-first response recorders and raw score calculators for the Parenting Stress Index (PSI-4-SF), Preschool/Kindergarten Behavior Scales (PKBS-2), and CESD-R caregiver depression screener.">
+  <meta name="description" content="Phone-first response recorders and raw score calculators for the PSI-4-SF, PKBS-2, CESD-R, Parent Questionnaire, and M-CHAT-R, built to hand to a caregiver.">
+  <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="images/logo.svg" type="image/svg+xml">
-  
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,6 +30,7 @@
       --lamplight: #F2B653;
       --lamplight-deep: #D99A2B;
       --moss: #7FA08C;
+      --moss-deep: #4F7360;
       --mist: #E4E9E2;
       --cream-on-dark: #F4EFE4;
       --soft-on-dark: #A8BBAF;
@@ -37,6 +39,8 @@
       --rose-soft: #C47A89;
       --plum: #6B5B8C;
       --plum-soft: #9C8CBF;
+      --sky: #3E6B8A;
+      --sky-soft: #86A9C2;
     }
     .cib-display { font-family: 'Young Serif', Georgia, serif; }
     .cib-body { font-family: 'Karla', system-ui, sans-serif; }
@@ -45,13 +49,31 @@
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: none; }
     }
+    /* Parent-facing celebration: a slow, contained bloom rather than a pop. */
+    .cib-bloom { animation: cibBloom 640ms cubic-bezier(0.16, 0.9, 0.3, 1) both; }
+    @keyframes cibBloom {
+      from { opacity: 0; transform: scale(0.86); }
+      60%  { opacity: 1; transform: scale(1.03); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .cib-check-draw { stroke-dasharray: 44; stroke-dashoffset: 44; animation: cibDraw 520ms 220ms ease forwards; }
+    @keyframes cibDraw { to { stroke-dashoffset: 0; } }
+    .cib-rise { animation: cibRise 520ms 120ms ease both; }
+    @keyframes cibRise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: none; }
+    }
     @media (prefers-reduced-motion: reduce) {
-      .cib-fade { animation: none; }
+      .cib-fade, .cib-bloom, .cib-rise { animation: none; }
+      .cib-check-draw { animation: none; stroke-dashoffset: 0; }
     }
     textarea:focus, input:focus, button:focus-visible, select:focus-visible {
       outline: 3px solid var(--lamplight);
       outline-offset: 2px;
     }
+    /* Comfortable on a phone held by someone who is not used to being handed one. */
+    body { -webkit-text-size-adjust: 100%; }
+    .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
   </style>
 
   <script>
@@ -83,76 +105,14 @@
 
   <!-- React Code compiled on-the-fly via Babel -->
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+    const { useState, useEffect, useRef, useCallback } = React;
 
-    const FONT_CSS_PSI = `
-    :root {
-      --spruce: #1F3A34;
-      --spruce-deep: #162B26;
-      --paper: #F7F4EC;
-      --card: #FFFFFF;
-      --ink: #22312C;
-      --ink-soft: #5C6E66;
-      --lamplight: #F2B653;
-      --lamplight-deep: #D99A2B;
-      --moss: #7FA08C;
-      --mist: #E4E9E2;
-      --cream-on-dark: #F4EFE4;
-      --soft-on-dark: #A8BBAF;
-      --alert: #B4552E;
-    }
-    `;
+    // The clinician code that unlocks results. Client-side only — this is a
+    // courtesy lock that keeps a caregiver holding the phone out of the scores,
+    // not a security boundary. Anyone who views source can read it.
+    const CLINICIAN_CODE = "1234";
 
-    const FONT_CSS_PKBS = `
-    :root {
-      --spruce: #1F3A34;
-      --spruce-deep: #162B26;
-      --paper: #F7F4EC;
-      --card: #FFFFFF;
-      --ink: #22312C;
-      --ink-soft: #5C6E66;
-      --lamplight: #F2B653;
-      --lamplight-deep: #D99A2B;
-      --moss: #7FA08C;
-      --mist: #E4E9E2;
-      --cream-on-dark: #F4EFE4;
-      --soft-on-dark: #A8BBAF;
-      --alert: #B4552E;
-      --rose: #9E4A5B;
-      --rose-soft: #C47A89;
-    }
-    `;
-
-    const FONT_CSS_CESDR = `
-    :root {
-      --spruce: #1F3A34;
-      --spruce-deep: #162B26;
-      --paper: #F7F4EC;
-      --card: #FFFFFF;
-      --ink: #22312C;
-      --ink-soft: #5C6E66;
-      --lamplight: #F2B653;
-      --lamplight-deep: #D99A2B;
-      --moss: #7FA08C;
-      --mist: #E4E9E2;
-      --cream-on-dark: #F4EFE4;
-      --soft-on-dark: #A8BBAF;
-      --alert: #B4552E;
-      --rose: #9E4A5B;
-      --plum: #6B5B8C;
-      --plum-soft: #9C8CBF;
-    }
-    `;
-
-    const STORAGE_KEY_PSI = "psi4sf:responses:v1";
-    const FORM_STORAGE_KEY_PSI = "psi4sf:form:v1";
-
-    const STORAGE_KEY_PKBS = "pkbs2:responses:v1";
-    const FORM_STORAGE_KEY_PKBS = "pkbs2:form:v1";
-
-    const FORM_STORAGE_KEY_CESDR = "cesdr:form:v1";
-
-    // ─── PSI-4-SF Question Bank ───
+    const STORAGE_PREFIX = "cfar:";
     function psiForm() {
       return {
         title: "Parenting Stress Index — Short Form",
@@ -228,8 +188,6 @@
         ],
       };
     }
-
-    // ─── PKBS-2 Question Bank ───
     function pkbsForm() {
       return {
         title: "PKBS-2",
@@ -327,10 +285,6 @@
         ],
       };
     }
-
-    // ─── CESD-R Question Bank ───
-    // Item order follows the published CESD-R form; item numbers below match
-    // the Child First CESD-R Score Sheet domain groupings.
     function cesdrForm() {
       return {
         title: "CESD-R",
@@ -385,55 +339,609 @@
     const CESDR_FURTHER_CUTOFF = 10; // > 10 warrants further investigation
     const CESDR_CLINICAL_CUTOFF = 16; // > 16 is the clinical threshold
 
-    function newId() {
-      return "q" + Date.now().toString(36) + Math.floor(Math.random() * 1000);
+    // ─── Parent Questionnaire (PQ) Question Bank ───
+    // Child First, July 2020 revision. Sections A–N each contribute 0 or 1 to
+    // the total; the rule differs by section and is carried on the section
+    // record below. Sections marked auto:true are the "automatic positive"
+    // sections starred on the paper form.
+    function pqForm() {
+      return {
+        title: "Parent Questionnaire",
+        subtitle: "A few questions about your family",
+        audience: "parent",
+        scale: ["Yes", "No"],
+        allowSkip: true,
+        questions: [
+          { id: "pq01", text: "I am worried about my child's development.", type: "yesno", category: "My Child's Development and Learning" },
+          { id: "pq02", text: "He or she is not learning as fast as I expected.", type: "yesno", category: "My Child's Development and Learning" },
+
+          { id: "pq03", text: "I am worried about my child's behavior.", type: "yesno", category: "My Child's Behavior and Feelings" },
+          { id: "pq04", text: "I am worried that my child is not happy.", type: "yesno", category: "My Child's Behavior and Feelings" },
+          { id: "pq05", text: "I feel like my child is angry, difficult, and disobeys me.", type: "yesno", category: "My Child's Behavior and Feelings" },
+
+          { id: "pq06", text: "I am employed or in an education or training program.", type: "yesno", category: "Employment and Education" },
+          { id: "pq07", text: "My child's other parent is employed or in an education or training program.", type: "yesno", category: "Employment and Education" },
+          { id: "pq08", text: "I have completed high school or have a GED.", type: "yesno", category: "Employment and Education" },
+
+          { id: "pq09", text: "I feel very worried, stressed, or down a lot of the time.", type: "yesno", category: "Caregiver Feelings" },
+          { id: "pq10", text: "Sometimes I feel hopeless and all alone.", type: "yesno", category: "Caregiver Feelings" },
+          { id: "pq11", text: "Sometimes I feel that life is just too hard to continue.", type: "yesno", category: "Caregiver Feelings" },
+
+          { id: "pq12", text: "There have been times when my family has had no place to live.", type: "yesno", category: "Family Living Arrangements" },
+          { id: "pq13", text: "My family has slept at a shelter.", type: "yesno", category: "Family Living Arrangements" },
+          { id: "pq14", text: "We have had to move more than three times this year.", type: "yesno", category: "Family Living Arrangements" },
+
+          { id: "pq15", text: "I am a single parent.", type: "yesno", category: "Caregiver Demographics" },
+          { id: "pq16", text: "I am under 19 years old.", type: "yesno", category: "Caregiver Demographics" },
+
+          { id: "pq17", text: "I have someone that I can turn to if I need help right away — like if I need money, a place to stay, or am very scared or worried.", type: "yesno", category: "Caregiver Support" },
+
+          { id: "pq18", text: "My child has been afraid or gotten hurt when there has been adult fighting.", type: "yesno", category: "Household Safety" },
+          { id: "pq19", text: "Adults in my home have hurt each other — like punched, hit, or kicked.", type: "yesno", category: "Household Safety" },
+          { id: "pq20", text: "I sometimes feel afraid or unsafe in my own home.", type: "yesno", category: "Household Safety" },
+
+          { id: "pq21", text: "I have medical problems that take a lot of time and energy.", type: "yesno", category: "Caregiver Medical Problems" },
+
+          { id: "pq22", text: "I have used alcohol to get drunk often.", type: "yesno", category: "Substance Use" },
+          { id: "pq23", text: "I have used drugs at some time in my life.", type: "yesno", category: "Substance Use" },
+          { id: "pq24", text: "My child's other parent uses drugs or alcohol.", type: "yesno", category: "Substance Use" },
+
+          { id: "pq25", text: "I have spent time in prison.", type: "yesno", category: "Time in Prison" },
+          { id: "pq26", text: "My child's other parent has spent time in prison.", type: "yesno", category: "Time in Prison" },
+
+          { id: "pq27", text: "My children and I have been involved with child welfare, in the past.", type: "yesno", category: "Involvement in Child Welfare" },
+          { id: "pq28", text: "My children and I are now involved with child welfare.", type: "yesno", category: "Involvement in Child Welfare" },
+
+          { id: "pq29", text: "When I was a child, I was sometimes physically hurt by adults.", type: "yesno", category: "Caregiver's Childhood History" },
+          { id: "pq30", text: "I sometimes felt afraid, not cared for, or all alone.", type: "yesno", category: "Caregiver's Childhood History" },
+          { id: "pq31", text: "There was physical fighting in my home among adults.", type: "yesno", category: "Caregiver's Childhood History" },
+          { id: "pq32", text: "My family was involved with child welfare services.", type: "yesno", category: "Caregiver's Childhood History" },
+
+          { id: "pq33", text: "I worry about having enough food to feed my family.", type: "yesno", category: "Food Stability" },
+        ],
+      };
+    }
+
+    // Section scoring rules, in the order printed down the fold-over margin of
+    // the paper form. `rule` is how that section earns its single point.
+    //   anyYes  — any Yes in the section scores 1
+    //   allNo   — every item answered No scores 1 (section C)
+    //   yes     — a single item, Yes scores 1
+    //   no      — a single item, No scores 1 (section G)
+    // `auto` marks the starred sections: one point there is an automatic positive.
+    const PQ_SECTIONS = [
+      { letter: "A", name: "My Child's Development and Learning", rule: "anyYes", auto: false },
+      { letter: "B", name: "My Child's Behavior and Feelings", rule: "anyYes", auto: true },
+      { letter: "C", name: "Employment and Education", rule: "allNo", auto: false },
+      { letter: "D", name: "Caregiver Feelings", rule: "anyYes", auto: true },
+      { letter: "E", name: "Family Living Arrangements", rule: "anyYes", auto: false },
+      { letter: "F", name: "Caregiver Demographics", rule: "anyYes", auto: false },
+      { letter: "G", name: "Caregiver Support", rule: "no", auto: false },
+      { letter: "H", name: "Household Safety", rule: "anyYes", auto: true },
+      { letter: "I", name: "Caregiver Medical Problems", rule: "yes", auto: false },
+      { letter: "J", name: "Substance Use", rule: "anyYes", auto: true },
+      { letter: "K", name: "Time in Prison", rule: "anyYes", auto: false },
+      { letter: "L", name: "Involvement in Child Welfare", rule: "anyYes", auto: true },
+      { letter: "M", name: "Caregiver's Childhood History", rule: "anyYes", auto: false },
+      { letter: "N", name: "Food Stability", rule: "yes", auto: false },
+    ];
+
+    const PQ_POSITIVE_CUTOFF = 3; // three or more risk factors screens positive
+
+    // ─── M-CHAT-R Question Bank ───
+    // Modified Checklist for Autism in Toddlers, Revised.
+    // © 2009 Diana Robins, Deborah Fein, & Marianne Barton.
+    // Items and item order are reproduced unmodified, as the instrument's terms
+    // of use require. Validated for children 16–30 months.
+    // For all items except 2, 5 and 12 a response of NO indicates ASD risk;
+    // for items 2, 5 and 12 a response of YES indicates ASD risk.
+    function mchatForm() {
+      return {
+        title: "M-CHAT-R",
+        subtitle: "Modified Checklist for Autism in Toddlers, Revised",
+        audience: "parent",
+        scale: ["Yes", "No"],
+        allowSkip: false,
+        instructions: "Please answer these questions about your child. Keep in mind how your child usually behaves. If you have seen your child do the behavior a few times, but he or she does not usually do it, then please answer no.",
+        questions: [
+          { id: "mc01", text: "If you point at something across the room, does your child look at it?", example: "For example, if you point at a toy or an animal, does your child look at the toy or animal?", type: "yesno", risk: "No" },
+          { id: "mc02", text: "Have you ever wondered if your child might be deaf?", type: "yesno", risk: "Yes" },
+          { id: "mc03", text: "Does your child play pretend or make-believe?", example: "For example, pretend to drink from an empty cup, pretend to talk on a phone, or pretend to feed a doll or stuffed animal.", type: "yesno", risk: "No" },
+          { id: "mc04", text: "Does your child like climbing on things?", example: "For example, furniture, playground equipment, or stairs.", type: "yesno", risk: "No" },
+          { id: "mc05", text: "Does your child make unusual finger movements near his or her eyes?", example: "For example, does your child wiggle his or her fingers close to his or her eyes?", type: "yesno", risk: "Yes" },
+          { id: "mc06", text: "Does your child point with one finger to ask for something or to get help?", example: "For example, pointing to a snack or toy that is out of reach.", type: "yesno", risk: "No" },
+          { id: "mc07", text: "Does your child point with one finger to show you something interesting?", example: "For example, pointing to an airplane in the sky or a big truck in the road.", type: "yesno", risk: "No" },
+          { id: "mc08", text: "Is your child interested in other children?", example: "For example, does your child watch other children, smile at them, or go to them?", type: "yesno", risk: "No" },
+          { id: "mc09", text: "Does your child show you things by bringing them to you or holding them up for you to see — not to get help, but just to share?", example: "For example, showing you a flower, a stuffed animal, or a toy truck.", type: "yesno", risk: "No" },
+          { id: "mc10", text: "Does your child respond when you call his or her name?", example: "For example, does he or she look up, talk or babble, or stop what he or she is doing when you call his or her name?", type: "yesno", risk: "No" },
+          { id: "mc11", text: "When you smile at your child, does he or she smile back at you?", type: "yesno", risk: "No" },
+          { id: "mc12", text: "Does your child get upset by everyday noises?", example: "For example, does your child scream or cry to noise such as a vacuum cleaner or loud music?", type: "yesno", risk: "Yes" },
+          { id: "mc13", text: "Does your child walk?", type: "yesno", risk: "No" },
+          { id: "mc14", text: "Does your child look you in the eye when you are talking to him or her, playing with him or her, or dressing him or her?", type: "yesno", risk: "No" },
+          { id: "mc15", text: "Does your child try to copy what you do?", example: "For example, wave bye-bye, clap, or make a funny noise when you do.", type: "yesno", risk: "No" },
+          { id: "mc16", text: "If you turn your head to look at something, does your child look around to see what you are looking at?", type: "yesno", risk: "No" },
+          { id: "mc17", text: "Does your child try to get you to watch him or her?", example: "For example, does your child look at you for praise, or say “look” or “watch me”?", type: "yesno", risk: "No" },
+          { id: "mc18", text: "Does your child understand when you tell him or her to do something?", example: "For example, if you don't point, can your child understand “put the book on the chair” or “bring me the blanket”?", type: "yesno", risk: "No" },
+          { id: "mc19", text: "If something new happens, does your child look at your face to see how you feel about it?", example: "For example, if he or she hears a strange or funny noise, or sees a new toy, will he or she look at your face?", type: "yesno", risk: "No" },
+          { id: "mc20", text: "Does your child like movement activities?", example: "For example, being swung or bounced on your knee.", type: "yesno", risk: "No" },
+        ],
+      };
+    }
+
+    const MCHAT_MEDIUM_RISK_MIN = 3; // 3–7 → administer the Follow-Up
+    const MCHAT_HIGH_RISK_MIN = 8;   // 8–20 → may bypass Follow-Up and refer
+
+    // ─────────────────────────────────────────────────────────────
+    // Scoring
+    //
+    // Every instrument's scorer returns the same shape so one results
+    // screen can render all of them:
+    //   { headline, rows, alerts, followUps }
+    // tone is "calm" | "watch" | "alert".
+    // ─────────────────────────────────────────────────────────────
+
+    const TONE_COLOR = { calm: "var(--moss-deep)", watch: "var(--lamplight-deep)", alert: "var(--rose)" };
+
+    const answered = (answers, q) => answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== "skip";
+
+    // ── PSI-4-SF ──
+    // Strongly Agree scores highest; two items carry their own choice scores.
+    function scorePSI(form, answers) {
+      const askable = form.questions.filter((q) => q.text.trim().length > 0);
+      const itemScore = (q) => {
+        const v = answers[q.id];
+        if (v === undefined || v === null || v === "skip") return null;
+        if (q.type === "choice" && Array.isArray(q.choices)) return q.choices[v] ? q.choices[v].score : null;
+        if (typeof v === "number") {
+          const start = typeof form.scaleStart === "number" ? form.scaleStart : 1;
+          return (form.scale.length - 1 - v) + start;
+        }
+        return null;
+      };
+      const cats = {};
+      askable.forEach((q) => {
+        if (!q.category) return;
+        const s = itemScore(q);
+        if (s === null) return;
+        if (!cats[q.category]) cats[q.category] = { sum: 0, n: 0, max: 0 };
+        cats[q.category].sum += s;
+        cats[q.category].n += 1;
+        cats[q.category].max += 5;
+      });
+      const keys = Object.keys(cats);
+      let sum = 0, max = 0;
+      keys.forEach((k) => { sum += cats[k].sum; max += cats[k].max; });
+      return {
+        itemScore,
+        headline: keys.length ? {
+          label: "Total Stress (raw)", value: sum, max,
+          verdict: { label: "Raw score", tone: "calm", note: "Convert to a percentile using the official PSI-4-SF profile before interpreting. This tool does not norm." },
+        } : null,
+        rows: keys.map((k) => ({ label: k, value: cats[k].sum, max: cats[k].max, tone: "calm" })),
+        alerts: [],
+        followUps: [],
+      };
+    }
+
+    // ── PKBS-2 ──
+    function scorePKBS(form, answers) {
+      const askable = form.questions.filter((q) => q.text.trim().length > 0);
+      const itemScore = (q) => {
+        const v = answers[q.id];
+        if (v === undefined || v === null || v === "skip" || typeof v !== "number") return null;
+        return v + (typeof form.scaleStart === "number" ? form.scaleStart : 0);
+      };
+      const SOCIAL = ["Social Cooperation", "Social Interaction", "Social Independence"];
+      const PROBLEM = ["Externalizing Problems", "Internalizing Problems"];
+      const cats = {};
+      askable.forEach((q) => {
+        if (!q.category) return;
+        const s = itemScore(q);
+        if (s === null) return;
+        if (!cats[q.category]) cats[q.category] = { sum: 0, n: 0, max: 0 };
+        cats[q.category].sum += s;
+        cats[q.category].n += 1;
+        cats[q.category].max += (form.scale.length - 1) + (form.scaleStart || 0);
+      });
+      const rows = [];
+      const composite = (names, label) => {
+        const present = names.filter((k) => cats[k]);
+        if (!present.length) return null;
+        let sum = 0, max = 0;
+        present.forEach((k) => { sum += cats[k].sum; max += cats[k].max; });
+        return { label, value: sum, max, tone: "calm", emphasis: true };
+      };
+      SOCIAL.forEach((k) => { if (cats[k]) rows.push({ label: k, value: cats[k].sum, max: cats[k].max, tone: "calm" }); });
+      const soc = composite(SOCIAL, "Social Skills Composite");
+      if (soc) rows.push(soc);
+      PROBLEM.forEach((k) => { if (cats[k]) rows.push({ label: k, value: cats[k].sum, max: cats[k].max, tone: "calm" }); });
+      const prob = composite(PROBLEM, "Problem Behavior Composite");
+      if (prob) rows.push(prob);
+      Object.keys(cats).forEach((k) => {
+        if (!SOCIAL.includes(k) && !PROBLEM.includes(k)) rows.push({ label: k, value: cats[k].sum, max: cats[k].max, tone: "calm" });
+      });
+      return {
+        itemScore,
+        headline: null,
+        rows,
+        alerts: rows.length ? [{
+          title: "Raw scores only", tone: "calm",
+          body: "Convert to standard scores and percentiles using the official PKBS-2 manual. Home-based and school-based raters use different tables.",
+        }] : [],
+        followUps: [],
+      };
+    }
+
+    // ── CESD-R ──
+    // The five response options score 0/1/2/3/3 per the Child First score sheet.
+    function scoreCESDR(form, answers) {
+      const askable = form.questions.filter((q) => q.text.trim().length > 0);
+      const scaleScores = Array.isArray(form.scaleScores) ? form.scaleScores : [];
+      const itemMax = scaleScores.length ? Math.max.apply(null, scaleScores) : 3;
+      const itemScore = (q) => {
+        const v = answers[q.id];
+        if (v === undefined || v === null || v === "skip" || typeof v !== "number") return null;
+        const s = scaleScores[v];
+        return typeof s === "number" ? s : null;
+      };
+      const cats = {};
+      askable.forEach((q) => {
+        if (!q.category) return;
+        const s = itemScore(q);
+        if (s === null) return;
+        if (!cats[q.category]) cats[q.category] = { sum: 0, n: 0, max: 0 };
+        cats[q.category].sum += s;
+        cats[q.category].n += 1;
+        cats[q.category].max += itemMax;
+      });
+      const ordered = [];
+      CESDR_DOMAIN_ORDER.forEach((k) => { if (cats[k]) ordered.push(k); });
+      Object.keys(cats).forEach((k) => { if (!ordered.includes(k)) ordered.push(k); });
+      let sum = 0, max = 0;
+      ordered.forEach((k) => { sum += cats[k].sum; max += cats[k].max; });
+
+      const si = askable.some((q) => q.category === "Suicidal Ideation" && (itemScore(q) || 0) > 0);
+      let verdict;
+      if (sum > CESDR_CLINICAL_CUTOFF) verdict = { label: "At or above clinical threshold", tone: "alert", note: "A total above " + CESDR_CLINICAL_CUTOFF + " meets the clinical threshold on this screener. Follow up with a full diagnostic assessment." };
+      else if (sum > CESDR_FURTHER_CUTOFF) verdict = { label: "Further investigation warranted", tone: "watch", note: "A total above " + CESDR_FURTHER_CUTOFF + " warrants further investigation, though it sits below the clinical threshold of " + CESDR_CLINICAL_CUTOFF + "." };
+      else verdict = { label: "Below screening cutoffs", tone: "calm", note: "A total of " + CESDR_FURTHER_CUTOFF + " or below sits under both cutoffs. Clinical judgment still governs." };
+
+      return {
+        itemScore,
+        headline: ordered.length ? { label: "Total Score", value: sum, max, verdict } : null,
+        rows: ordered.map((k) => ({ label: k, value: cats[k].sum, max: cats[k].max, tone: k === "Suicidal Ideation" && si ? "alert" : "calm" })),
+        alerts: si ? [{
+          title: "Suicidal ideation endorsed", tone: "alert",
+          body: "Item 14 and/or 15 was endorsed. Any endorsement on either item requires further assessment now, regardless of the total score. Follow your program's safety protocol.",
+        }] : [],
+        followUps: [],
+      };
+    }
+
+    // ── Parent Questionnaire ──
+    // Each lettered section earns at most 1 point, by its own rule. Positive
+    // screen = 3+ points, or any point in a starred (auto-positive) section.
+    // Clinical concern alone is also a positive screen — the clinician's call.
+    function scorePQ(form, answers) {
+      const val = (id) => {
+        const v = answers[id];
+        if (v === 0) return "Yes";
+        if (v === 1) return "No";
+        return null; // unanswered or skipped
+      };
+      const rows = [];
+      const autoHits = [];
+      let total = 0;
+      PQ_SECTIONS.forEach((sec) => {
+        const items = form.questions.filter((q) => q.category === sec.name);
+        const vals = items.map((q) => val(q.id));
+        const anyAnswered = vals.some((v) => v !== null);
+        let point = 0;
+        if (sec.rule === "anyYes") point = vals.some((v) => v === "Yes") ? 1 : 0;
+        else if (sec.rule === "allNo") point = (vals.length > 0 && vals.every((v) => v === "No")) ? 1 : 0;
+        else if (sec.rule === "yes") point = vals[0] === "Yes" ? 1 : 0;
+        else if (sec.rule === "no") point = vals[0] === "No" ? 1 : 0;
+        total += point;
+        if (point && sec.auto) autoHits.push(sec);
+        rows.push({
+          label: sec.letter + ". " + sec.name + (sec.auto ? " ★" : ""),
+          value: point, max: 1,
+          tone: point ? (sec.auto ? "alert" : "watch") : "calm",
+          muted: !anyAnswered,
+        });
+      });
+      const positive = total >= PQ_POSITIVE_CUTOFF || autoHits.length > 0;
+      const verdict = positive
+        ? {
+            label: "Positive screen", tone: autoHits.length ? "alert" : "watch",
+            note: autoHits.length
+              ? "An automatic-positive section was endorsed (" + autoHits.map((s) => s.letter).join(", ") + "), which is a positive screen on its own regardless of the total."
+              : "Three or more risk factors is a positive screen.",
+          }
+        : {
+            label: "Below the cut-point", tone: "calm",
+            note: "Fewer than " + PQ_POSITIVE_CUTOFF + " risk factors and no automatic positive. Any clinical concern is a positive screen regardless of the score.",
+          };
+      return {
+        itemScore: (q) => (val(q.id) === "Yes" ? 1 : val(q.id) === "No" ? 0 : null),
+        headline: { label: "Risk factors", value: total, max: PQ_SECTIONS.length, verdict },
+        rows,
+        alerts: autoHits.map((s) => ({
+          title: "Automatic positive — " + s.letter + ". " + s.name, tone: "alert",
+          body: (PQ_FOLLOW_UP[s.letter] || "Explore with the caregiver before the visit ends."),
+        })),
+        followUps: rows
+          .filter((r) => r.value > 0)
+          .map((r) => {
+            const letter = r.label.slice(0, 1);
+            return { letter, label: r.label.replace(" ★", ""), prompt: PQ_FOLLOW_UP[letter] || "" };
+          }),
+      };
+    }
+
+    // ── M-CHAT-R ──
+    // NO indicates risk on every item except 2, 5 and 12, where YES does.
+    function scoreMCHAT(form, answers) {
+      const itemScore = (q) => {
+        const v = answers[q.id];
+        if (v === undefined || v === null || v === "skip") return null;
+        const said = v === 0 ? "Yes" : "No";
+        return said === q.risk ? 1 : 0;
+      };
+      let total = 0;
+      const failed = [];
+      form.questions.forEach((q, i) => {
+        const s = itemScore(q);
+        if (s === 1) { total += 1; failed.push(i + 1); }
+      });
+      let verdict;
+      if (total >= MCHAT_HIGH_RISK_MIN) verdict = { label: "High risk", tone: "alert", note: "A total of " + MCHAT_HIGH_RISK_MIN + "–20. It is acceptable to bypass the Follow-Up and refer immediately for diagnostic evaluation and an early-intervention eligibility evaluation." };
+      else if (total >= MCHAT_MEDIUM_RISK_MIN) verdict = { label: "Medium risk", tone: "watch", note: "A total of " + MCHAT_MEDIUM_RISK_MIN + "–7. Administer the M-CHAT-R/F Follow-Up interview on the failed items only. If the Follow-Up score stays at 2 or higher the child has screened positive and should be referred." };
+      else verdict = { label: "Low risk", tone: "calm", note: "A total of 0–2. No further action unless surveillance indicates risk. If the child is younger than 24 months, screen again after the second birthday." };
+      return {
+        itemScore,
+        headline: { label: "Risk items", value: total, max: form.questions.length, verdict },
+        rows: [],
+        alerts: failed.length ? [{
+          title: "Items indicating risk", tone: total >= MCHAT_MEDIUM_RISK_MIN ? "watch" : "calm",
+          body: "Item" + (failed.length > 1 ? "s " : " ") + failed.join(", ") + ". "
+            + (total >= MCHAT_MEDIUM_RISK_MIN && total < MCHAT_HIGH_RISK_MIN
+              ? "Administer the Follow-Up interview for these items only."
+              : "Refer regardless of score if you or the caregiver have concerns about ASD."),
+        }] : [],
+        followUps: [],
+      };
+    }
+
+    // Condensed follow-up prompts from the Child First Brief Guide to the PQ.
+    // These are conversation openers for the clinician, never read aloud as a script.
+    const PQ_FOLLOW_UP = {
+      A: "What are the specific concerns? When were you first worried, and why? Is your child developing differently from what you expected, or from other children? Any evaluation in the past?",
+      B: "What worries you about the behavior — can you describe it? How often, where, how long, and when did it begin? Did it follow a change at home or in child care? Has your child been home during fighting or yelling? What have you already tried?",
+      C: "What financial support does the family have? Are you interested in continuing education or training, or in work? What has stood in the way before? What assistance would help most?",
+      D: "What kinds of feelings are you having, and for how long? Have you felt this way before or sought help? Do you feel isolated, overwhelmed, hopeless? Have you ever felt like you wanted to end it all — do you feel that way now? Have you pictured how? Would you like help with these feelings?",
+      E: "Where are you living now, and how long? Is it stable? How many people are in the home? How many moves this year? When was there no place to live, and what did you do?",
+      F: "Do you live with other adults? Is the child's other parent involved? Where is your family, and do they support you — with care, or financially?",
+      G: "Who can you turn to if you are in trouble, need money, are sick, or need someone to care for your children? Is there anyone you can talk to about worries or feeling overwhelmed?",
+      H: "How can you tell your child has been afraid — what did you observe? Is the fighting yelling and threatening, or physical? Have you been hurt? Is it going on now? Where was your child? Do you want help so you and your child can feel safe?",
+      I: "What kind of medical problems? Do they make caring for your child difficult, and how often do they take you away? Any hospitalizations? Who cares for your child when you cannot?",
+      J: "Sometimes when people feel stressed or sad they drink or use so they feel better — has that happened to you, now or in the past? Prescription or street drugs? Have you ever wanted help to stop? Are family or friends worried about you?",
+      K: "When, and for how long? Did you have a child then, and who cared for them? What was it like when you were together again? How did your child react to the separation and the return?",
+      L: "When were you involved, and for how long? Are you still involved now? What brought child welfare into your life? Was your child ever removed, and who did they live with? How often could you see them? What was the return like for both of you?",
+      M: "In what ways were you physically harmed — did you ever need medical attention? How often did adults fight at home? Were police ever involved? Were you left alone for long periods? What do you remember about child welfare in your life as a child?",
+      N: "Have you or your children ever gone to bed hungry? Have you used a food pantry? Have you had to choose between food and heat or rent? Do you have WIC or SNAP? Would you like help accessing food resources?",
+    };
+
+    // ─────────────────────────────────────────────────────────────
+    // Instrument registry
+    //
+    // Everything that differs between instruments lives here. One Recorder
+    // component below drives all of them, so adding an instrument is a matter
+    // of adding a question bank, a scorer, and an entry in this list.
+    // ─────────────────────────────────────────────────────────────
+    const INSTRUMENTS = [
+      {
+        id: "pq",
+        short: "PQ",
+        card: "Parent Questionnaire",
+        eyebrow: "Family Strengths & Needs",
+        tag: "Baseline · Required",
+        accent: "#4F7360",
+        accentVar: "var(--moss-deep)",
+        audience: "parent",
+        build: pqForm,
+        score: scorePQ,
+        blurb: "A short baseline screen of family risk and protective factors, opening the conversation about what a family is carrying.",
+        purpose: "These questions ask about your family's life right now — your child, your home, your health, and the support you have — so that the people working with you understand what you are carrying and where help would actually make a difference.",
+        meta: ["33 questions", "About 5 minutes", "Yes or no", "You may skip any question"],
+        parentNote: "Answer only what you feel comfortable sharing. There are no right answers, and nothing here is a test of your parenting.",
+      },
+      {
+        id: "mchat",
+        short: "M-CHAT-R",
+        card: "M-CHAT-R",
+        eyebrow: "Toddler Development",
+        tag: "16–30 months",
+        accent: "#3E6B8A",
+        accentVar: "var(--sky)",
+        audience: "parent",
+        build: mchatForm,
+        score: scoreMCHAT,
+        blurb: "A brief caregiver-report screen for autism spectrum risk in toddlers aged 16 to 30 months.",
+        purpose: "These questions ask about the everyday things your toddler does — pointing, playing, looking at you, responding to their name — because how a child does these small things tells us a great deal about how they are developing.",
+        meta: ["20 questions", "About 3 minutes", "Yes or no", "Ages 16–30 months"],
+        parentNote: "Think about how your child usually behaves. If you have seen your child do something a few times but they do not usually do it, answer no.",
+        copyright: "M-CHAT-R™ © 2009 Diana Robins, Deborah Fein, & Marianne Barton. Used with items and item order unmodified, as the instrument's terms require.",
+      },
+      {
+        id: "psi",
+        short: "PSI-4-SF",
+        card: "PSI-4-SF",
+        eyebrow: "Parenting Stress",
+        tag: "Caregiver self-report",
+        accent: "#7FA08C",
+        accentVar: "var(--moss)",
+        audience: "parent",
+        build: psiForm,
+        score: scorePSI,
+        blurb: "Parenting Stress Index, Short Form. Parent Distress, Parent-Child Dysfunctional Interaction, and Difficult Child.",
+        purpose: "These questions ask how you are doing in the day-to-day work of parenting — your own stress, how things feel between you and your child, and what your child's temperament asks of you — so support can go where it is most needed.",
+        meta: ["36 statements", "About 10 minutes", "5-point scale", "3 subscales"],
+        parentNote: "There are no right answers. Answer for how things have been lately, not how you think they should be.",
+      },
+      {
+        id: "pkbs",
+        short: "PKBS-2",
+        card: "PKBS-2",
+        eyebrow: "Preschool & Kindergarten",
+        tag: "Ages 3–6",
+        accent: "#9E4A5B",
+        accentVar: "var(--rose)",
+        audience: "parent",
+        build: pkbsForm,
+        score: scorePKBS,
+        blurb: "Preschool and Kindergarten Behavior Scales. Social skills alongside problem behaviors, as an adult who knows the child sees them.",
+        purpose: "These questions ask you to describe what your child actually does day to day — what they are good at with other people as well as what is hard for them — so that both their strengths and their struggles are on the record.",
+        meta: ["76 items", "About 15 minutes", "4-point scale", "Past 3 months"],
+        parentNote: "Answer for what you have actually seen over the last three months. Strengths matter here as much as difficulties.",
+      },
+      {
+        id: "cesdr",
+        short: "CESD-R",
+        card: "CESD-R",
+        eyebrow: "Caregiver Wellbeing",
+        tag: "Baseline · 6 mo · Discharge",
+        accent: "#6B5B8C",
+        accentVar: "var(--plum)",
+        audience: "parent",
+        build: cesdrForm,
+        score: scoreCESDR,
+        blurb: "Center for Epidemiologic Studies Depression Scale, Revised. Nine symptom domains over the past week or two.",
+        purpose: "These questions ask how you have been feeling over the past week or two, because how a caregiver is doing shapes the whole family's day, and it deserves care of its own.",
+        meta: ["20 questions", "About 5 minutes", "Past week or two", "How you have been feeling"],
+        parentNote: "This asks about you, not your child. Answer for how often you have felt this way recently.",
+      },
+    ];
+
+    const instrumentById = (id) => INSTRUMENTS.filter((x) => x.id === id)[0] || null;
+
+    // ─────────────────────────────────────────────────────────────
+    // Confetti — a short, contained burst in the app's own palette.
+    // Celebratory but not a party: muted colors, gravity, ~1.6s, then gone.
+    // Skipped entirely when the viewer prefers reduced motion.
+    // ─────────────────────────────────────────────────────────────
+    function Confetti({ run }) {
+      const canvasRef = useRef(null);
+      useEffect(() => {
+        if (!run) return;
+        let reduced = false;
+        try {
+          reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        } catch (e) { /* treat as not reduced */ }
+        if (reduced) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.scale(dpr, dpr);
+
+        const COLORS = ["#F2B653", "#7FA08C", "#4F7360", "#D99A2B", "#A8BBAF", "#6B5B8C"];
+        const pieces = [];
+        const count = Math.min(70, Math.round(w / 6));
+        for (let i = 0; i < count; i++) {
+          pieces.push({
+            x: w / 2 + (Math.random() - 0.5) * w * 0.5,
+            y: h * 0.34 + (Math.random() - 0.5) * 30,
+            vx: (Math.random() - 0.5) * 4.4,
+            vy: -3.2 - Math.random() * 4.2,
+            size: 4 + Math.random() * 5,
+            rot: Math.random() * Math.PI,
+            vr: (Math.random() - 0.5) * 0.22,
+            color: COLORS[i % COLORS.length],
+          });
+        }
+
+        let raf = 0;
+        const start = performance.now();
+        const DURATION = 1700;
+        const tick = (now) => {
+          const elapsed = now - start;
+          ctx.clearRect(0, 0, w, h);
+          const fade = elapsed > DURATION - 500 ? Math.max(0, (DURATION - elapsed) / 500) : 1;
+          pieces.forEach((p) => {
+            p.vy += 0.13;          // gravity
+            p.vx *= 0.995;         // drag
+            p.x += p.vx;
+            p.y += p.vy;
+            p.rot += p.vr;
+            ctx.save();
+            ctx.globalAlpha = fade;
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.62);
+            ctx.restore();
+          });
+          if (elapsed < DURATION) raf = requestAnimationFrame(tick);
+          else ctx.clearRect(0, 0, w, h);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+      }, [run]);
+
+      return (
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 w-full h-full"
+          style={{ zIndex: 1 }}
+        />
+      );
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Shared: title card shown at the start of every assessment.
-    // One sentence on what the instrument covers and why it matters,
-    // so whoever is scoring knows what they are about to hand over.
+    // Title card — one sentence on what this covers and why, shown before
+    // the first question so whoever is holding the phone knows what they
+    // are about to be asked.
     // ─────────────────────────────────────────────────────────────
-    function AssessmentIntro({ css, eyebrow, title, subtitle, purpose, meta, accent, beginLabel, backLabel, onBegin, onBack }) {
+    function AssessmentIntro({ eyebrow, title, subtitle, purpose, note, meta, accent, beginLabel, backLabel, onBegin, onBack }) {
       return (
-        <div className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
-          {css ? <style>{css}</style> : null}
-          <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 flex flex-col flex-1">
+        <div className="cib-body min-h-screen w-full flex flex-col cib-fade" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+          <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
 
-            <button
-              onClick={onBack}
-              className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white"
-              style={{ color: "var(--soft-on-dark)" }}
-            >
+            <button onClick={onBack} className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
               &larr; {backLabel || "Back"}
             </button>
 
-            <div className="flex-1 flex flex-col justify-center py-10 cib-fade">
+            <div className="flex-1 flex flex-col justify-center py-8">
               <div className="rounded-3xl p-7" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}>
                 {eyebrow ? (
-                  <div className="cib-body text-xs font-bold uppercase tracking-widest mb-3" style={{ color: accent || "var(--lamplight)", letterSpacing: "0.14em" }}>
+                  <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: accent || "var(--lamplight)", letterSpacing: "0.14em" }}>
                     {eyebrow}
                   </div>
                 ) : null}
-                <h1 className="cib-display text-3xl leading-tight mb-2" style={{ color: "var(--cream-on-dark)" }}>
-                  {title}
-                </h1>
-                {subtitle ? (
-                  <p className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{subtitle}</p>
-                ) : null}
+                <h1 className="cib-display text-3xl leading-tight mb-2">{title}</h1>
+                {subtitle ? <p className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{subtitle}</p> : null}
 
                 <div className="h-px w-full my-5" style={{ background: "rgba(255,255,255,0.14)" }} />
 
-                <p className="text-base leading-relaxed" style={{ color: "var(--cream-on-dark)" }}>
-                  {purpose}
-                </p>
+                <p className="text-base leading-relaxed">{purpose}</p>
+
+                {note ? (
+                  <p className="text-sm leading-relaxed mt-4 rounded-2xl p-4" style={{ background: "rgba(242,182,83,0.12)", color: "var(--cream-on-dark)", border: "1px solid rgba(242,182,83,0.25)" }}>
+                    {note}
+                  </p>
+                ) : null}
 
                 {Array.isArray(meta) && meta.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-6">
                     {meta.map((m) => (
-                      <span key={m} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.09)", color: "var(--soft-on-dark)" }}>
-                        {m}
-                      </span>
+                      <span key={m} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.09)", color: "var(--soft-on-dark)" }}>{m}</span>
                     ))}
                   </div>
                 )}
@@ -442,8 +950,8 @@
 
             <button
               onClick={onBegin}
-              className="w-full rounded-2xl py-4 text-lg font-bold transition-transform active:scale-[0.98]"
-              style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}
+              className="w-full rounded-2xl py-5 text-xl font-bold transition-transform active:scale-[0.98]"
+              style={{ background: "var(--lamplight)", color: "var(--spruce-deep)" }}
             >
               {beginLabel || "Begin"}
             </button>
@@ -453,588 +961,128 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Component 1: PSI-4-SF Response Recorder
+    // Parent thank-you — the last thing a caregiver sees. No scores, no
+    // interpretation, nothing that could be read as a verdict on them.
     // ─────────────────────────────────────────────────────────────
-    function PSI4SFRecorder({ onBack }) {
-      const [form, setForm] = useState(psiForm);
-      const [mode, setMode] = useState("build"); // build | intro | fill | done
-      const [answers, setAnswers] = useState({});
-      const [idx, setIdx] = useState(0);
-      const [saveState, setSaveState] = useState("idle");
-      const [copied, setCopied] = useState(false);
-      const [confirmReset, setConfirmReset] = useState(false);
-      const [showDisclaimer, setShowDisclaimer] = useState(true);
-      const loadedRef = useRef(false);
-
-      // Load saved form design if any
+    function ParentThankYou({ onUnlock }) {
+      const [celebrate, setCelebrate] = useState(false);
       useEffect(() => {
-        let alive = true;
-        (async () => {
-          try {
-            if (!window.storage) {
-              if (alive) setSaveState("off");
-              loadedRef.current = true;
-              return;
-            }
-            const result = await window.storage.get(FORM_STORAGE_KEY_PSI);
-            if (alive && result && result.value) {
-              const parsed = JSON.parse(result.value);
-              if (parsed && Array.isArray(parsed.questions)) {
-                setForm(parsed);
-              }
-            }
-          } catch (e) {
-            // ignore
-          } finally {
-            loadedRef.current = true;
-          }
-        })();
-        return () => { alive = false; };
+        const t = setTimeout(() => setCelebrate(true), 180);
+        return () => clearTimeout(t);
       }, []);
-
-      // Persist form design
-      useEffect(() => {
-        if (!loadedRef.current) return;
-        let cancelled = false;
-        const t = setTimeout(async () => {
-          try {
-            if (!window.storage) return;
-            await window.storage.set(FORM_STORAGE_KEY_PSI, JSON.stringify(form));
-            if (!cancelled) {
-              setSaveState("saved");
-              setTimeout(() => { if (!cancelled) setSaveState("idle"); }, 1500);
-            }
-          } catch (e) {
-            if (!cancelled) setSaveState("off");
-          }
-        }, 600);
-        return () => { cancelled = true; clearTimeout(t); };
-      }, [form]);
-
-      // ─── editing helpers ───
-      const updateQuestion = (id, patch) => {
-        setForm((f) => ({
-          ...f,
-          questions: f.questions.map((q) => (q.id === id ? { ...q, ...patch } : q)),
-        }));
-      };
-      const addQuestion = () => {
-        setForm((f) => ({
-          ...f,
-          questions: [...f.questions, { id: newId(), text: "", type: "scale", category: "" }],
-        }));
-      };
-      const removeQuestion = (id) => {
-        setForm((f) => ({ ...f, questions: f.questions.filter((q) => q.id !== id) }));
-      };
-      const moveQuestion = (id, dir) => {
-        setForm((f) => {
-          const qs = [...f.questions];
-          const i = qs.findIndex((q) => q.id === id);
-          const j = i + dir;
-          if (i < 0 || j < 0 || j >= qs.length) return f;
-          [qs[i], qs[j]] = [qs[j], qs[i]];
-          return { ...f, questions: qs };
-        });
-      };
-      const updateScaleLabel = (i, value) => {
-        setForm((f) => {
-          const scale = [...f.scale];
-          scale[i] = value;
-          return { ...f, scale };
-        });
-      };
-      const addScaleLabel = () => {
-        setForm((f) => (f.scale.length >= 7 ? f : { ...f, scale: [...f.scale, "New option"] }));
-      };
-      const removeScaleLabel = (i) => {
-        setForm((f) => (f.scale.length <= 2 ? f : { ...f, scale: f.scale.filter((_, k) => k !== i) }));
-      };
-      const resetToPSI = () => {
-        if (!confirmReset) {
-          setConfirmReset(true);
-          setTimeout(() => setConfirmReset(false), 3000);
-          return;
-        }
-        setConfirmReset(false);
-        setForm(psiForm());
-        setAnswers({});
-      };
-
-      const askable = form.questions.filter((q) => q.text.trim().length > 0);
-
-      // ─── scoring ───
-      const getScore = (q) => {
-        const v = answers[q.id];
-        if (v === undefined || v === null) return null;
-        if (q.type === "choice" && Array.isArray(q.choices)) {
-          const choice = q.choices[v];
-          return choice ? choice.score : null;
-        }
-        if (q.type === "scale" && typeof v === "number") {
-          const start = typeof form.scaleStart === "number" ? form.scaleStart : 1;
-          return (form.scale.length - 1 - v) + start;
-        }
-        return null;
-      };
-
-      const categoryTotals = () => {
-        const totals = {};
-        askable.forEach((q) => {
-          if (!q.category) return;
-          const score = getScore(q);
-          if (score === null) return;
-          if (!totals[q.category]) totals[q.category] = { sum: 0, n: 0, max: 0 };
-          totals[q.category].sum += score;
-          totals[q.category].n += 1;
-          totals[q.category].max += 5; // each item max = 5
-        });
-        const subKeys = Object.keys(totals);
-        if (subKeys.length > 0) {
-          let totalSum = 0, totalN = 0, totalMax = 0;
-          subKeys.forEach((k) => {
-            totalSum += totals[k].sum;
-            totalN += totals[k].n;
-            totalMax += totals[k].max;
-          });
-          totals["Total Stress"] = { sum: totalSum, n: totalN, max: totalMax };
-        }
-        return totals;
-      };
-
-      // ─── fill mode ───
-      const startFill = () => {
-        if (askable.length === 0) return;
-        setAnswers({});
-        setIdx(0);
-        setCopied(false);
-        setMode("intro");
-      };
-      const current = askable[idx];
-      const next = () => {
-        if (idx + 1 >= askable.length) setMode("done");
-        else setIdx(idx + 1);
-      };
-      const back = () => {
-        if (idx === 0) setMode("intro");
-        else setIdx(idx - 1);
-      };
-
-      // ─── results helpers ───
-      const summaryText = () => {
-        const lines = [form.title, new Date().toLocaleDateString(), ""];
-        askable.forEach((q, i) => {
-          const score = getScore(q);
-          let a = "(skipped)";
-          if (score !== null) {
-            if (q.type === "choice" && Array.isArray(q.choices)) {
-              a = q.choices[answers[q.id]]?.label + " (" + score + ")";
-            } else if (q.type === "scale") {
-              a = form.scale[answers[q.id]] + " (" + score + ")";
-            }
-          }
-          lines.push((i + 1) + ". " + q.text);
-          lines.push("   " + a);
-        });
-        const totals = categoryTotals();
-        const keys = Object.keys(totals);
-        if (keys.length) {
-          lines.push("");
-          lines.push("Subscale Totals");
-          keys.forEach((k) => {
-            lines.push(k + ": " + totals[k].sum + " of " + totals[k].max + " (" + totals[k].n + " items)");
-          });
-        }
-        return lines.join("\n");
-      };
-
-      const copySummary = async () => {
-        const text = summaryText();
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-        } catch (e) {
-          try {
-            const ta = document.createElement("textarea");
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand("copy");
-            document.body.removeChild(ta);
-            setCopied(true);
-          } catch (err) {
-            setCopied(false);
-          }
-        }
-        setTimeout(() => setCopied(false), 2000);
-      };
-
-      const Eyebrow = ({ children, dark }) => (
-        <div
-          className="cib-body text-xs font-bold uppercase tracking-widest mb-2"
-          style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}
-        >
-          {children}
-        </div>
-      );
-
-      const existingCategories = Array.from(
-        new Set(form.questions.map((q) => q.category).filter(Boolean))
-      );
-
-      // ─── INTRO / TITLE CARD ───
-      if (mode === "intro") {
-        return (
-          <AssessmentIntro
-            css={FONT_CSS_PSI}
-            eyebrow="Parenting Stress"
-            title={form.title}
-            subtitle={form.subtitle}
-            purpose="This questionnaire measures how much stress a parent is carrying in the parenting role — their own distress, the parent–child relationship, and how they experience the child's temperament — so that support can be aimed at whichever part of the system is under the most strain."
-            meta={[askable.length + " items", form.scale.length + "-point scale", "3 subscales", "About 10 minutes"]}
-            accent="var(--moss)"
-            beginLabel="Begin"
-            backLabel="Back to builder"
-            onBegin={() => setMode("fill")}
-            onBack={() => setMode("build")}
-          />
-        );
-      }
-
-      // ─── BUILD MODE ───
-      if (mode === "build") {
-        return (
-          <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-            <style>{FONT_CSS_PSI}</style>
-            <div className="max-w-md mx-auto px-4 pb-32 pt-8">
-              
-              {/* Back to Dashboard Banner */}
-              <div className="flex justify-between items-center mb-6">
-                <button onClick={onBack} className="text-xs font-bold uppercase tracking-wider transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
-                  &larr; Back to Dashboard
-                </button>
-              </div>
-
-              <Eyebrow>PSI-4-SF Recorder</Eyebrow>
-              <input
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                aria-label="Form title"
-                className="cib-display w-full bg-transparent text-3xl leading-tight mb-1 border-0"
-                style={{ color: "var(--spruce)" }}
-              />
-              <input
-                value={form.subtitle || ""}
-                onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-                aria-label="Form subtitle"
-                className="cib-body w-full bg-transparent text-sm mb-4 border-0"
-                style={{ color: "var(--ink-soft)" }}
-              />
-              <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
-                {askable.length} items loaded. Edit questions, scale labels, or categories below.
-                {saveState === "saved" && <span style={{ color: "var(--moss)" }}> Saved.</span>}
-                {saveState === "off" && <span> Saving is off here.</span>}
-              </p>
-
-              {showDisclaimer && (
-                <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                  <div className="flex justify-between items-start mb-2">
-                    <Eyebrow>About this instrument</Eyebrow>
-                    <button onClick={() => setShowDisclaimer(false)} className="text-sm" style={{ color: "var(--ink-soft)" }}>✕</button>
-                  </div>
-                  <p className="text-xs mb-2" style={{ color: "var(--ink-soft)" }}>
-                    The Parenting Stress Index, 4th Edition, Short Form (PSI-4-SF) is a copyrighted
-                    instrument published by Psychological Assessment Resources, Inc. This app records
-                    responses only. Scoring interpretation, and clinical decisions must follow the
-                    official manual and materials.
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
-                    <strong>Subscales:</strong> Parent Distress (PD) · Parent-Child Dysfunctional
-                    Interaction (PCDI) · Difficult Child (DC). Raw totals are shown below; convert
-                    to standard scores using the official profile.
-                  </p>
-                </div>
-              )}
-
-              <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                <Eyebrow>Answer scale</Eyebrow>
-                <p className="text-xs mb-3" style={{ color: "var(--ink-soft)" }}>
-                  Strongly Agree scores highest ({form.scale.length - 1 + (form.scaleStart || 1)}),
-                  Strongly Disagree scores lowest ({form.scaleStart || 1}).
-                </p>
-                {form.scale.map((label, i) => (
-                  <div key={i} className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: "var(--mist)", color: "var(--spruce)" }}>
-                      {form.scale.length - 1 - i + (form.scaleStart || 1)}
-                    </span>
-                    <input
-                      value={label}
-                      onChange={(e) => updateScaleLabel(i, e.target.value)}
-                      aria-label={"Scale option " + i}
-                      className="flex-1 rounded-lg px-3 py-2 text-sm border"
-                      style={{ borderColor: "var(--mist)", background: "var(--paper)" }}
-                    />
-                    <button onClick={() => removeScaleLabel(i)} aria-label={"Remove " + i} className="w-8 h-8 rounded-lg text-sm flex-shrink-0" style={{ color: "var(--ink-soft)", background: "transparent" }}>✕</button>
-                  </div>
-                ))}
-                {form.scale.length < 7 && (
-                  <button onClick={addScaleLabel} className="text-sm font-bold mt-1" style={{ color: "var(--moss)" }}>+ Add option</button>
-                )}
-              </div>
-
-              <Eyebrow>Questions</Eyebrow>
-              {form.questions.map((q, i) => (
-                <div key={q.id} className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="cib-display text-lg" style={{ color: "var(--moss)" }}>{i + 1}</span>
-                    <div className="flex gap-1">
-                      <button onClick={() => moveQuestion(q.id, -1)} aria-label="Move up" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--spruce)" }}>↑</button>
-                      <button onClick={() => moveQuestion(q.id, 1)} aria-label="Move down" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--spruce)" }}>↓</button>
-                      <button onClick={() => removeQuestion(q.id)} aria-label="Delete" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--ink-soft)" }}>✕</button>
-                    </div>
-                  </div>
-                  <textarea
-                    value={q.text}
-                    onChange={(e) => updateQuestion(q.id, { text: e.target.value })}
-                    placeholder="Write your question here"
-                    rows={2}
-                    aria-label={"Question " + (i + 1)}
-                    className="w-full rounded-lg px-3 py-2 text-base border mb-3 resize-none border-[#E4E9E2]"
-                    style={{ background: "var(--paper)", color: "var(--ink)" }}
-                  />
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={() => updateQuestion(q.id, { type: "scale", choices: undefined })}
-                      className="flex-1 rounded-lg py-2 text-sm font-bold transition-all"
-                      style={q.type === "scale" ? { background: "var(--spruce)", color: "var(--cream-on-dark)" } : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}
-                    >Scale</button>
-                    <button
-                      onClick={() => updateQuestion(q.id, { type: "text" })}
-                      className="flex-1 rounded-lg py-2 text-sm font-bold transition-all"
-                      style={q.type === "text" ? { background: "var(--spruce)", color: "var(--cream-on-dark)" } : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}
-                    >Open answer</button>
-                    <button
-                      onClick={() => updateQuestion(q.id, { type: "choice" })}
-                      className="flex-1 rounded-lg py-2 text-sm font-bold transition-all"
-                      style={q.type === "choice" ? { background: "var(--spruce)", color: "var(--cream-on-dark)" } : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}
-                    >Custom</button>
-                  </div>
-                  {q.type === "choice" && (
-                    <div className="mb-3">
-                      <p className="text-xs mb-2" style={{ color: "var(--ink-soft)" }}>Choices (score shown in parentheses):</p>
-                      {(q.choices || []).map((c, ci) => (
-                        <div key={ci} className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-bold w-6 text-center" style={{ color: "var(--moss)" }}>{c.score}</span>
-                          <input
-                            value={c.label}
-                            onChange={(e) => {
-                              const newChoices = [...(q.choices || [])];
-                              newChoices[ci] = { ...c, label: e.target.value };
-                              updateQuestion(q.id, { choices: newChoices });
-                            }}
-                            className="flex-1 rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]"
-                            style={{ background: "var(--paper)" }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <input
-                    value={q.category}
-                    onChange={(e) => updateQuestion(q.id, { category: e.target.value })}
-                    placeholder="Subscale / category"
-                    aria-label={"Question " + (i + 1) + " category"}
-                    className="w-full rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]"
-                    style={{ background: "var(--paper)" }}
-                  />
-                  {existingCategories.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {existingCategories.map((c) => (
-                        <button key={c} onClick={() => updateQuestion(q.id, { category: c })} className="text-xs px-2 py-1 rounded-full transition-colors hover:bg-[#c3d1c8]" style={{ background: "var(--mist)", color: "var(--spruce)" }}>{c}</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              <button onClick={addQuestion} className="w-full rounded-2xl py-3 text-base font-bold mb-3 transition-colors hover:bg-[#fcfbf9]" style={{ background: "var(--card)", color: "var(--spruce)", border: "2px dashed var(--moss)" }}>
-                + Add a question
-              </button>
-
-              <button onClick={resetToPSI} className="w-full py-2 text-sm transition-colors hover:text-opacity-80" style={{ color: confirmReset ? "var(--alert)" : "var(--ink-soft)" }}>
-                {confirmReset ? "Tap again to restore PSI-4-SF defaults" : "Restore PSI-4-SF defaults"}
-              </button>
-            </div>
-
-            <div className="fixed bottom-0 left-0 right-0 px-4 py-4" style={{ background: "linear-gradient(transparent, var(--paper) 40%)" }}>
-              <div className="max-w-md mx-auto">
-                <button
-                  onClick={startFill}
-                  disabled={askable.length === 0}
-                  className="w-full rounded-2xl py-4 text-lg font-bold shadow-lg transition-transform active:scale-[0.98]"
-                  style={askable.length === 0 ? { background: "var(--mist)", color: "var(--ink-soft)" } : { background: "var(--spruce)", color: "var(--cream-on-dark)" }}
-                >
-                  Hand it over · {askable.length} items
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // ─── FILL MODE ───
-      if (mode === "fill" && current) {
-        const progress = ((idx + 1) / askable.length) * 100;
-        const value = answers[current.id];
-        return (
-          <div className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
-            <style>{FONT_CSS_PSI}</style>
-            <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 flex flex-col flex-1">
-              <div className="mb-8">
-                <div className="flex justify-between items-baseline mb-2">
-                  <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{form.title}</span>
-                  <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{idx + 1} of {askable.length}</span>
-                </div>
-                <div className="h-1 rounded-full w-full" style={{ background: "rgba(255,255,255,0.12)" }}>
-                  <div className="h-1 rounded-full" style={{ width: progress + "%", background: "var(--lamplight)", transition: "width 300ms ease" }} />
-                </div>
-              </div>
-
-              <div key={current.id} className="cib-fade flex-1 flex flex-col">
-                {current.category ? <Eyebrow dark>{current.category}</Eyebrow> : null}
-                <h1 className="cib-display text-2xl leading-snug mb-8" style={{ color: "var(--cream-on-dark)" }}>
-                  {current.text}
-                </h1>
-
-                {current.type === "scale" ? (
-                  <div className="flex flex-col gap-3">
-                    {form.scale.map((label, i) => {
-                      const selected = value === i;
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setAnswers({ ...answers, [current.id]: i })}
-                          className="w-full rounded-2xl py-4 px-5 text-left text-base font-bold transition-all active:scale-[0.99]"
-                          style={selected
-                            ? { background: "var(--lamplight)", color: "var(--spruce-deep)", boxShadow: "0 0 0 3px rgba(242,182,83,0.35)" }
-                            : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }
-                          }
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : current.type === "choice" && Array.isArray(current.choices) ? (
-                  <div className="flex flex-col gap-3">
-                    {current.choices.map((choice, i) => {
-                      const selected = value === i;
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setAnswers({ ...answers, [current.id]: i })}
-                          className="w-full rounded-2xl py-4 px-5 text-left text-base font-bold transition-all active:scale-[0.99]"
-                          style={selected
-                            ? { background: "var(--lamplight)", color: "var(--spruce-deep)", boxShadow: "0 0 0 3px rgba(242,182,83,0.35)" }
-                            : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }
-                          }
-                        >
-                          {choice.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <textarea
-                    value={typeof value === "string" ? value : ""}
-                    onChange={(e) => setAnswers({ ...answers, [current.id]: e.target.value })}
-                    placeholder="Whatever comes to mind is fine here."
-                    rows={5}
-                    aria-label="Your answer"
-                    className="w-full rounded-2xl p-4 text-base resize-none focus:outline-none"
-                    style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}
-                  />
-                )}
-              </div>
-
-              <div className="flex gap-3 mt-8">
-                <button onClick={back} className="rounded-2xl py-4 px-6 text-base font-bold transition-colors hover:bg-white/10" style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
-                  Back
-                </button>
-                <button onClick={next} className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-opacity-90" style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
-                  {idx + 1 >= askable.length ? "Finish" : "Next"}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // ─── DONE / RESULTS ───
-      const totals = categoryTotals();
-      const totalKeys = Object.keys(totals);
-      const answeredCount = askable.filter((q) => answers[q.id] !== undefined).length;
-
       return (
-        <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-          <style>{FONT_CSS_PSI}</style>
-          <div className="max-w-md mx-auto px-4 py-8 cib-fade">
-            <Eyebrow>All done</Eyebrow>
-            <h1 className="cib-display text-3xl mb-2" style={{ color: "var(--spruce)" }}>Thank you.</h1>
-            <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
-              {answeredCount} of {askable.length} items answered. Answers live only on this screen.
-              Copy them before you close or start over.
+        <div className="cib-body min-h-screen w-full flex flex-col relative overflow-hidden" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+          <Confetti run={celebrate} />
+          <div className="max-w-md mx-auto w-full px-6 py-10 safe-bottom flex flex-col flex-1 items-center justify-center text-center relative" style={{ zIndex: 2 }}>
+
+            <div className="cib-bloom mb-7" aria-hidden="true">
+              <svg width="120" height="120" viewBox="0 0 120 120" role="img">
+                <circle cx="60" cy="60" r="54" fill="rgba(127,160,140,0.18)" />
+                <circle cx="60" cy="60" r="42" fill="var(--moss)" />
+                <path d="M42 61 L54 73 L79 48" fill="none" stroke="var(--spruce-deep)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" className="cib-check-draw" />
+              </svg>
+            </div>
+
+            <div className="text-5xl mb-4 cib-bloom" role="img" aria-label="Celebration">🎉</div>
+
+            <h1 className="cib-display text-4xl leading-tight mb-4 cib-rise">Thank you so much!</h1>
+
+            <p className="text-lg leading-relaxed mb-3 cib-rise" style={{ color: "var(--cream-on-dark)" }}>
+              You're all done — every question is answered.
+            </p>
+            <p className="text-base leading-relaxed cib-rise" style={{ color: "var(--soft-on-dark)" }}>
+              Sharing this takes real trust, and it genuinely helps us understand
+              your family and how to be useful to you. We appreciate your time.
             </p>
 
-            {totalKeys.length > 0 && (
-              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
-                <Eyebrow dark>Raw subscale totals</Eyebrow>
-                {totalKeys.map((k) => (
-                  <div key={k} className="flex justify-between items-baseline mb-2">
-                    <span className="font-bold text-sm">{k}</span>
-                    <span className="cib-display text-xl">
-                      {totals[k].sum}
-                      <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}> / {totals[k].max}</span>
-                    </span>
-                  </div>
-                ))}
-                <p className="text-xs mt-3" style={{ color: "var(--soft-on-dark)" }}>
-                  These are raw scores. Convert to standard scores and percentiles using the official PSI-4-SF manual and profile.
-                </p>
-              </div>
-            )}
-
-            <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-              {askable.map((q, i) => {
-                const score = getScore(q);
-                let a = "Skipped";
-                if (score !== null) {
-                  if (q.type === "choice" && Array.isArray(q.choices)) a = q.choices[answers[q.id]]?.label;
-                  else if (q.type === "scale") a = form.scale[answers[q.id]];
-                  else if (q.type === "text" && typeof answers[q.id] === "string") a = answers[q.id].trim();
-                }
-                return (
-                  <div key={q.id} className="py-3" style={i < askable.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="text-sm" style={{ color: "var(--ink-soft)" }}>{i + 1}. {q.text}</div>
-                      {score !== null && <div className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>{score}</div>}
-                    </div>
-                    <div className="font-bold mt-1" style={{ color: "var(--spruce)" }}>{a}</div>
-                  </div>
-                );
-              })}
+            <div className="mt-10 w-full rounded-2xl p-5 cib-rise" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}>
+              <p className="text-base font-bold mb-1">Please hand the device back</p>
+              <p className="text-sm" style={{ color: "var(--soft-on-dark)" }}>
+                Your answers have been recorded. Your provider will go through them with you.
+              </p>
             </div>
 
-            <button onClick={copySummary} className="w-full rounded-2xl py-4 text-lg font-bold mb-3 transition-colors hover:bg-opacity-90" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
-              {copied ? "Copied" : "Copy answers"}
+            <button
+              onClick={onUnlock}
+              className="mt-8 text-xs font-bold uppercase tracking-wider transition-colors hover:text-white"
+              style={{ color: "rgba(168,187,175,0.75)", letterSpacing: "0.12em" }}
+            >
+              Provider access
             </button>
-            <div className="flex gap-3">
-              <button onClick={startFill} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
-                New check-in
-              </button>
-              <button onClick={() => setMode("build")} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
-                Back to builder
-              </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Clinician gate — a 4-digit keypad standing between the thank-you
+    // screen and the results. This keeps a caregiver holding the phone out
+    // of the scores. It is not a security boundary; see the README.
+    // ─────────────────────────────────────────────────────────────
+    function ClinicianGate({ onPass, onCancel }) {
+      const [entry, setEntry] = useState("");
+      const [wrong, setWrong] = useState(false);
+
+      const push = (d) => {
+        if (entry.length >= 4) return;
+        const next = entry + d;
+        setEntry(next);
+        setWrong(false);
+        if (next.length === 4) {
+          setTimeout(() => {
+            if (next === CLINICIAN_CODE) onPass();
+            else { setWrong(true); setEntry(""); }
+          }, 140);
+        }
+      };
+
+      return (
+        <div className="cib-body min-h-screen w-full flex flex-col cib-fade" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+          <div className="max-w-xs mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
+            <button onClick={onCancel} className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
+              &larr; Back
+            </button>
+
+            <div className="flex-1 flex flex-col justify-center">
+              <div className="text-center mb-8">
+                <h1 className="cib-display text-2xl mb-2">Provider access</h1>
+                <p className="text-sm" style={{ color: "var(--soft-on-dark)" }}>
+                  Enter the code to view results.
+                </p>
+              </div>
+
+              <div className="flex justify-center gap-3 mb-3" role="status" aria-live="polite">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="w-4 h-4 rounded-full transition-all" style={{
+                    background: i < entry.length ? "var(--lamplight)" : "rgba(255,255,255,0.16)",
+                    transform: i < entry.length ? "scale(1.15)" : "none",
+                  }} />
+                ))}
+              </div>
+              <p className="text-center text-sm h-6 mb-4" style={{ color: wrong ? "var(--rose-soft)" : "transparent" }}>
+                {wrong ? "That code didn't match. Try again." : "placeholder"}
+              </p>
+
+              <div className="grid grid-cols-3 gap-3">
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+                  <button key={d} onClick={() => push(d)} aria-label={"Digit " + d}
+                    className="rounded-2xl py-5 text-2xl font-bold transition-transform active:scale-95"
+                    style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                    {d}
+                  </button>
+                ))}
+                <div />
+                <button onClick={() => push("0")} aria-label="Digit 0"
+                  className="rounded-2xl py-5 text-2xl font-bold transition-transform active:scale-95"
+                  style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                  0
+                </button>
+                <button onClick={() => { setEntry(entry.slice(0, -1)); setWrong(false); }} aria-label="Delete"
+                  className="rounded-2xl py-5 text-lg font-bold transition-transform active:scale-95"
+                  style={{ background: "transparent", color: "var(--soft-on-dark)" }}>
+                  ⌫
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1042,1107 +1090,417 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Component 2: PKBS-2 Response Recorder
+    // Recorder — drives every instrument.
+    //
+    // Flow:  setup (clinician) → intro → fill (parent) → thanks (parent)
+    //        → gate → results (clinician)
+    //
+    // The parent only ever sees intro / fill / thanks. Results sit behind
+    // the code, and there is no path from the thank-you screen back into the
+    // dashboard without it.
     // ─────────────────────────────────────────────────────────────
-    function PKBS2Recorder({ onBack }) {
-      const [form, setForm] = useState(pkbsForm);
-      const [mode, setMode] = useState("build"); // build | intro | fill | done
+    function Recorder({ instrument, onExit }) {
+      const [form, setForm] = useState(instrument.build);
+      const [mode, setMode] = useState("setup"); // setup | intro | fill | thanks | gate | results
       const [answers, setAnswers] = useState({});
       const [idx, setIdx] = useState(0);
       const [saveState, setSaveState] = useState("idle");
       const [copied, setCopied] = useState(false);
       const [confirmReset, setConfirmReset] = useState(false);
-      const [showDisclaimer, setShowDisclaimer] = useState(true);
-      const [raterInfo, setRaterInfo] = useState({ childName: "", ageYears: "", ageMonths: "", sex: "", ratedBy: "", relationship: "", date: "", setting: "" });
-      const [activeScaleFilter, setActiveScaleFilter] = useState("all"); // all | social | problem
+      const [showEditor, setShowEditor] = useState(false);
+      const [autoAdvance, setAutoAdvance] = useState(true);
+      const [gateReturn, setGateReturn] = useState("results");
+      const [meta, setMeta] = useState({ childName: "", childId: "", caregiverName: "", clinician: "", date: "", interval: "" });
       const loadedRef = useRef(false);
+      const advanceRef = useRef(null);
+      const FORM_KEY = STORAGE_PREFIX + instrument.id + ":form:v1";
 
-      // Load saved form
+      // Load any saved edits to the question bank
       useEffect(() => {
         let alive = true;
         (async () => {
           try {
-            if (!window.storage) {
-              if (alive) setSaveState("off");
-              loadedRef.current = true;
-              return;
-            }
-            const result = await window.storage.get(FORM_STORAGE_KEY_PKBS);
+            if (!window.storage) { if (alive) setSaveState("off"); loadedRef.current = true; return; }
+            const result = await window.storage.get(FORM_KEY);
             if (alive && result && result.value) {
               const parsed = JSON.parse(result.value);
               if (parsed && Array.isArray(parsed.questions)) setForm(parsed);
             }
-          } catch (e) {
-            // ignore
-          } finally {
-            loadedRef.current = true;
-          }
+          } catch (e) { /* fall back to the built-in bank */ }
+          finally { loadedRef.current = true; }
         })();
         return () => { alive = false; };
-      }, []);
+      }, [FORM_KEY]);
 
-      // Persist form
+      // Persist edits to the question bank (never the answers)
       useEffect(() => {
         if (!loadedRef.current) return;
         let cancelled = false;
         const t = setTimeout(async () => {
           try {
             if (!window.storage) return;
-            await window.storage.set(FORM_STORAGE_KEY_PKBS, JSON.stringify(form));
+            await window.storage.set(FORM_KEY, JSON.stringify(form));
             if (!cancelled) {
               setSaveState("saved");
               setTimeout(() => { if (!cancelled) setSaveState("idle"); }, 1500);
             }
-          } catch (e) {
-            if (!cancelled) setSaveState("off");
-          }
+          } catch (e) { if (!cancelled) setSaveState("off"); }
         }, 600);
         return () => { cancelled = true; clearTimeout(t); };
-      }, [form]);
+      }, [form, FORM_KEY]);
 
-      // ─── editing helpers ───
-      const updateQuestion = (id, patch) => {
-        setForm((f) => ({
-          ...f,
-          questions: f.questions.map((q) => (q.id === id ? { ...q, ...patch } : q)),
-        }));
-      };
-      const addQuestion = () => {
-        setForm((f) => ({
-          ...f,
-          questions: [...f.questions, { id: newId(), text: "", type: "scale", category: "" }],
-        }));
-      };
-      const removeQuestion = (id) => {
-        setForm((f) => ({ ...f, questions: f.questions.filter((q) => q.id !== id) }));
-      };
-      const moveQuestion = (id, dir) => {
-        setForm((f) => {
-          const qs = [...f.questions];
-          const i = qs.findIndex((q) => q.id === id);
-          const j = i + dir;
-          if (i < 0 || j < 0 || j >= qs.length) return f;
-          [qs[i], qs[j]] = [qs[j], qs[i]];
-          return { ...f, questions: qs };
-        });
-      };
-      const updateScaleLabel = (i, value) => {
-        setForm((f) => {
-          const scale = [...f.scale];
-          scale[i] = value;
-          return { ...f, scale };
-        });
-      };
-      const addScaleLabel = () => {
-        setForm((f) => (f.scale.length >= 7 ? f : { ...f, scale: [...f.scale, "New option"] }));
-      };
-      const removeScaleLabel = (i) => {
-        setForm((f) => (f.scale.length <= 2 ? f : { ...f, scale: f.scale.filter((_, k) => k !== i) }));
-      };
-      const resetToPKBS = () => {
-        if (!confirmReset) {
-          setConfirmReset(true);
-          setTimeout(() => setConfirmReset(false), 3000);
-          return;
-        }
-        setConfirmReset(false);
-        setForm(pkbsForm());
-        setAnswers({});
-      };
+      useEffect(() => () => { if (advanceRef.current) clearTimeout(advanceRef.current); }, []);
 
-      // Filter questions by scale for fill mode
-      const getFilteredQuestions = () => {
-        const askable = form.questions.filter((q) => q.text.trim().length > 0);
-        if (activeScaleFilter === "social") {
-          return askable.filter((q) =>
-            ["Social Cooperation", "Social Interaction", "Social Independence"].includes(q.category)
-          );
-        }
-        if (activeScaleFilter === "problem") {
-          return askable.filter((q) =>
-            ["Externalizing Problems", "Internalizing Problems"].includes(q.category)
-          );
-        }
-        return askable;
-      };
+      const askable = form.questions.filter((q) => q.text.trim().length > 0);
+      const current = askable[idx];
+      const scored = instrument.score(form, answers);
 
-      const askable = getFilteredQuestions();
-
-      // ─── scoring ───
-      const getScore = (q) => {
-        const v = answers[q.id];
-        if (v === undefined || v === null) return null;
-        if (q.type === "scale" && typeof v === "number") {
-          const start = typeof form.scaleStart === "number" ? form.scaleStart : 0;
-          return v + start; // index 0 = start score
-        }
-        return null;
-      };
-
-      const categoryTotals = () => {
-        const totals = {};
-        form.questions.forEach((q) => {
-          if (!q.category) return;
-          const score = getScore(q);
-          if (score === null) return;
-          if (!totals[q.category]) totals[q.category] = { sum: 0, n: 0, max: 0 };
-          totals[q.category].sum += score;
-          totals[q.category].n += 1;
-          totals[q.category].max += (form.scale.length - 1) + (form.scaleStart || 0);
-        });
-        const socialKeys = ["Social Cooperation", "Social Interaction", "Social Independence"];
-        const problemKeys = ["Externalizing Problems", "Internalizing Problems"];
-        const socialItems = socialKeys.filter((k) => totals[k]);
-        const problemItems = problemKeys.filter((k) => totals[k]);
-        if (socialItems.length) {
-          let sum = 0, n = 0, max = 0;
-          socialItems.forEach((k) => { sum += totals[k].sum; n += totals[k].n; max += totals[k].max; });
-          totals["Social Skills Composite"] = { sum, n, max };
-        }
-        if (problemItems.length) {
-          let sum = 0, n = 0, max = 0;
-          problemItems.forEach((k) => { sum += totals[k].sum; n += totals[k].n; max += totals[k].max; });
-          totals["Problem Behavior Composite"] = { sum, n, max };
-        }
-        return totals;
-      };
-
-      // ─── fill mode ───
-      const startFill = () => {
+      // ─── flow ───
+      const startSession = () => {
         if (askable.length === 0) return;
         setAnswers({});
         setIdx(0);
         setCopied(false);
         setMode("intro");
       };
-      const current = askable[idx];
-      const next = () => {
-        if (idx + 1 >= askable.length) setMode("done");
+      const goNext = () => {
+        if (advanceRef.current) clearTimeout(advanceRef.current);
+        if (idx + 1 >= askable.length) setMode("thanks");
         else setIdx(idx + 1);
       };
-      const back = () => {
+      const goBack = () => {
+        if (advanceRef.current) clearTimeout(advanceRef.current);
         if (idx === 0) setMode("intro");
         else setIdx(idx - 1);
       };
-
-      // ─── results helpers ───
-      const summaryText = () => {
-        const lines = [
-          form.title + " — " + form.subtitle,
-          "Date: " + (raterInfo.date || new Date().toLocaleDateString()),
-          "Child: " + (raterInfo.childName || "(not provided)"),
-          "Age: " + (raterInfo.ageYears || "?") + "y " + (raterInfo.ageMonths || "?") + "m  |  Sex: " + (raterInfo.sex || "?"),
-          "Rated by: " + (raterInfo.ratedBy || "(not provided)") + " (" + (raterInfo.relationship || "?") + ")",
-          "Setting: " + (raterInfo.setting || "(not provided)"),
-          "",
-        ];
-        askable.forEach((q, i) => {
-          const score = getScore(q);
-          let a = "(skipped)";
-          if (score !== null) a = form.scale[answers[q.id]] + " (" + score + ")";
-          lines.push((i + 1) + ". " + q.text);
-          lines.push("   " + a);
-        });
-        const totals = categoryTotals();
-        const keys = Object.keys(totals);
-        if (keys.length) {
-          lines.push("");
-          lines.push("Raw Subscale Totals");
-          keys.forEach((k) => {
-            lines.push(k + ": " + totals[k].sum + " of " + totals[k].max + " (" + totals[k].n + " items)");
-          });
+      const choose = (value) => {
+        setAnswers((a) => ({ ...a, [current.id]: value }));
+        if (autoAdvance && current.type !== "text") {
+          if (advanceRef.current) clearTimeout(advanceRef.current);
+          advanceRef.current = setTimeout(() => {
+            setIdx((i) => {
+              if (i + 1 >= askable.length) { setMode("thanks"); return i; }
+              return i + 1;
+            });
+          }, 260);
         }
-        return lines.join("\n");
       };
-
-      const copySummary = async () => {
-        const text = summaryText();
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-        } catch (e) {
-          try {
-            const ta = document.createElement("textarea");
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand("copy");
-            document.body.removeChild(ta);
-            setCopied(true);
-          } catch (err) {
-            setCopied(false);
-          }
-        }
-        setTimeout(() => setCopied(false), 2000);
-      };
-
-      const Eyebrow = ({ children, dark }) => (
-        <div className="cib-body text-xs font-bold uppercase tracking-widest mb-2" style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}>
-          {children}
-        </div>
-      );
-
-      const existingCategories = Array.from(new Set(form.questions.map((q) => q.category).filter(Boolean)));
-
-      const socialSkillsCount = form.questions.filter((q) =>
-        ["Social Cooperation", "Social Interaction", "Social Independence"].includes(q.category)
-      ).length;
-      const problemBehaviorCount = form.questions.filter((q) =>
-        ["Externalizing Problems", "Internalizing Problems"].includes(q.category)
-      ).length;
-
-      // ─── INTRO / TITLE CARD ───
-      if (mode === "intro") {
-        return (
-          <AssessmentIntro
-            css={FONT_CSS_PKBS}
-            eyebrow="Preschool &amp; Kindergarten"
-            title={form.title}
-            subtitle={form.subtitle}
-            purpose="This rating scale asks an adult who knows a 3- to 6-year-old day to day to describe both their social skills and their problem behaviors, so that strengths and concerns are named in the settings the child actually lives in rather than in a clinic room."
-            meta={[askable.length + " items", form.scale.length + "-point scale", "5 subscales", "Past 3 months"]}
-            accent="var(--rose-soft)"
-            beginLabel="Begin"
-            backLabel="Back to builder"
-            onBegin={() => setMode("fill")}
-            onBack={() => setMode("build")}
-          />
-        );
-      }
-
-      // ─── BUILD MODE ───
-      if (mode === "build") {
-        return (
-          <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-            <style>{FONT_CSS_PKBS}</style>
-            <div className="max-w-md mx-auto px-4 pb-32 pt-8">
-              
-              {/* Back to Dashboard Banner */}
-              <div className="flex justify-between items-center mb-6">
-                <button onClick={onBack} className="text-xs font-bold uppercase tracking-wider transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
-                  &larr; Back to Dashboard
-                </button>
-              </div>
-
-              <Eyebrow>PKBS-2 Recorder</Eyebrow>
-              <input
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                aria-label="Form title"
-                className="cib-display w-full bg-transparent text-3xl leading-tight mb-1 border-0"
-                style={{ color: "var(--spruce)" }}
-              />
-              <input
-                value={form.subtitle || ""}
-                onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-                aria-label="Form subtitle"
-                className="cib-body w-full bg-transparent text-sm mb-4 border-0"
-                style={{ color: "var(--ink-soft)" }}
-              />
-              <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
-                {socialSkillsCount} Social Skills items · {problemBehaviorCount} Problem Behavior items.
-                {saveState === "saved" && <span style={{ color: "var(--moss)" }}> Saved.</span>}
-                {saveState === "off" && <span> Saving is off here.</span>}
-              </p>
-
-              {showDisclaimer && (
-                <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                  <div className="flex justify-between items-start mb-2">
-                    <Eyebrow>About this instrument</Eyebrow>
-                    <button onClick={() => setShowDisclaimer(false)} className="text-sm" style={{ color: "var(--ink-soft)" }}>✕</button>
-                  </div>
-                  <p className="text-xs mb-2" style={{ color: "var(--ink-soft)" }}>
-                    The Preschool and Kindergarten Behavior Scales — 2nd Edition (PKBS-2) is a
-                    copyrighted instrument published by PRO-ED, Inc. This app records responses only.
-                    Scoring, interpretation, and clinical decisions must follow the official manual.
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
-                    <strong>Social Skills:</strong> Social Cooperation (SC) · Social Interaction (INT) · Social Independence (IND).{" "}
-                    <strong>Problem Behavior:</strong> Externalizing Problems (EP) · Internalizing Problems (IP).
-                    Raw totals are shown; convert to standard scores and percentiles using the official manual.
-                  </p>
-                </div>
-              )}
-
-              {/* Rater Info */}
-              <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                <Eyebrow>Child & Rater Information</Eyebrow>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <input value={raterInfo.childName} onChange={(e) => setRaterInfo({ ...raterInfo, childName: e.target.value })} placeholder="Child's name" className="col-span-2 rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                  <input value={raterInfo.ageYears} onChange={(e) => setRaterInfo({ ...raterInfo, ageYears: e.target.value.replace(/\D/g, "") })} placeholder="Age (years)" inputMode="numeric" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                  <input value={raterInfo.ageMonths} onChange={(e) => setRaterInfo({ ...raterInfo, ageMonths: e.target.value.replace(/\D/g, "") })} placeholder="Age (months)" inputMode="numeric" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                  <select value={raterInfo.sex} onChange={(e) => setRaterInfo({ ...raterInfo, sex: e.target.value })} className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }}>
-                    <option value="">Sex</option>
-                    <option value="M">Male</option>
-                    <option value="F">Female</option>
-                  </select>
-                  <input value={raterInfo.date} onChange={(e) => setRaterInfo({ ...raterInfo, date: e.target.value })} placeholder="Date (YYYY-MM-DD)" type="date" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                </div>
-                <input value={raterInfo.ratedBy} onChange={(e) => setRaterInfo({ ...raterInfo, ratedBy: e.target.value })} placeholder="Rated by" className="w-full rounded-lg px-3 py-2 text-sm border mb-3 border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                <input value={raterInfo.relationship} onChange={(e) => setRaterInfo({ ...raterInfo, relationship: e.target.value })} placeholder="Relationship to child" className="w-full rounded-lg px-3 py-2 text-sm border mb-3 border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                <input value={raterInfo.setting} onChange={(e) => setRaterInfo({ ...raterInfo, setting: e.target.value })} placeholder="Setting(s) observed" className="w-full rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-              </div>
-
-              <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                <Eyebrow>Answer scale</Eyebrow>
-                <p className="text-xs mb-3" style={{ color: "var(--ink-soft)" }}>
-                  Rate based on observations during the past 3 months.
-                </p>
-                {form.scale.map((label, i) => (
-                  <div key={i} className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: "var(--mist)", color: "var(--spruce)" }}>
-                      {i + (form.scaleStart || 0)}
-                    </span>
-                    <input
-                      value={label}
-                      onChange={(e) => updateScaleLabel(i, e.target.value)}
-                      aria-label={"Scale option " + i}
-                      className="flex-1 rounded-lg px-3 py-2 text-sm border"
-                      style={{ borderColor: "var(--mist)", background: "var(--paper)" }}
-                    />
-                    <button onClick={() => removeScaleLabel(i)} aria-label={"Remove " + i} className="w-8 h-8 rounded-lg text-sm flex-shrink-0" style={{ color: "var(--ink-soft)", background: "transparent" }}>✕</button>
-                  </div>
-                ))}
-                {form.scale.length < 7 && (
-                  <button onClick={addScaleLabel} className="text-sm font-bold mt-1" style={{ color: "var(--moss)" }}>+ Add option</button>
-                )}
-              </div>
-
-              <div className="flex gap-2 mb-4">
-                <button onClick={() => setActiveScaleFilter("all")} className="flex-1 rounded-lg py-2 text-sm font-bold" style={activeScaleFilter === "all" ? { background: "var(--spruce)", color: "var(--cream-on-dark)" } : { background: "var(--card)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>All items</button>
-                <button onClick={() => setActiveScaleFilter("social")} className="flex-1 rounded-lg py-2 text-sm font-bold" style={activeScaleFilter === "social" ? { background: "var(--moss)", color: "var(--cream-on-dark)" } : { background: "var(--card)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>Social Skills</button>
-                <button onClick={() => setActiveScaleFilter("problem")} className="flex-1 rounded-lg py-2 text-sm font-bold" style={activeScaleFilter === "problem" ? { background: "var(--rose)", color: "var(--cream-on-dark)" } : { background: "var(--card)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>Problem Behavior</button>
-              </div>
-
-              <Eyebrow>Questions</Eyebrow>
-              {form.questions.length === 0 && (
-                <div className="rounded-2xl p-6 text-center text-sm mb-4" style={{ background: "var(--card)", border: "1px dashed var(--moss)", color: "var(--ink-soft)" }}>
-                  A blank page. Add your first question below.
-                </div>
-              )}
-              {form.questions.map((q, i) => (
-                <div key={q.id} className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="cib-display text-lg" style={{ color: "var(--moss)" }}>{i + 1}</span>
-                    <div className="flex gap-1">
-                      <button onClick={() => moveQuestion(q.id, -1)} aria-label="Move up" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--spruce)" }}>↑</button>
-                      <button onClick={() => moveQuestion(q.id, 1)} aria-label="Move down" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--spruce)" }}>↓</button>
-                      <button onClick={() => removeQuestion(q.id)} aria-label="Delete" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--ink-soft)" }}>✕</button>
-                    </div>
-                  </div>
-                  <textarea
-                    value={q.text}
-                    onChange={(e) => updateQuestion(q.id, { text: e.target.value })}
-                    placeholder="Write your question here"
-                    rows={2}
-                    aria-label={"Question " + (i + 1)}
-                    className="w-full rounded-lg px-3 py-2 text-base border mb-3 resize-none border-[#E4E9E2]"
-                    style={{ background: "var(--paper)", color: "var(--ink)" }}
-                  />
-                  <div className="flex gap-2 mb-3">
-                    <button onClick={() => updateQuestion(q.id, { type: "scale" })} className="flex-1 rounded-lg py-2 text-sm font-bold" style={q.type === "scale" ? { background: "var(--spruce)", color: "var(--cream-on-dark)" } : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>Scale</button>
-                    <button onClick={() => updateQuestion(q.id, { type: "text" })} className="flex-1 rounded-lg py-2 text-sm font-bold" style={q.type === "text" ? { background: "var(--spruce)", color: "var(--cream-on-dark)" } : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>Open answer</button>
-                  </div>
-                  <input
-                    value={q.category}
-                    onChange={(e) => updateQuestion(q.id, { category: e.target.value })}
-                    placeholder="Subscale / category"
-                    aria-label={"Question " + (i + 1) + " category"}
-                    className="w-full rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]"
-                    style={{ background: "var(--paper)" }}
-                  />
-                  {existingCategories.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {existingCategories.map((c) => (
-                        <button key={c} onClick={() => updateQuestion(q.id, { category: c })} className="text-xs px-2 py-1 rounded-full transition-colors hover:bg-[#c3d1c8]" style={{ background: "var(--mist)", color: "var(--spruce)" }}>{c}</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              <button onClick={addQuestion} className="w-full rounded-2xl py-3 text-base font-bold mb-3 transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "2px dashed var(--moss)" }}>
-                + Add a question
-              </button>
-
-              <button onClick={resetToPKBS} className="w-full py-2 text-sm transition-colors hover:text-opacity-80" style={{ color: confirmReset ? "var(--alert)" : "var(--ink-soft)" }}>
-                {confirmReset ? "Tap again to restore PKBS-2 defaults" : "Restore PKBS-2 defaults"}
-              </button>
-            </div>
-
-            <div className="fixed bottom-0 left-0 right-0 px-4 py-4" style={{ background: "linear-gradient(transparent, var(--paper) 40%)" }}>
-              <div className="max-w-md mx-auto">
-                <button
-                  onClick={startFill}
-                  disabled={askable.length === 0}
-                  className="w-full rounded-2xl py-4 text-lg font-bold shadow-lg transition-transform active:scale-[0.98]"
-                  style={askable.length === 0 ? { background: "var(--mist)", color: "var(--ink-soft)" } : { background: "var(--spruce)", color: "var(--cream-on-dark)" }}
-                >
-                  Hand it over · {askable.length} items
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // ─── FILL MODE ───
-      if (mode === "fill" && current) {
-        const progress = ((idx + 1) / askable.length) * 100;
-        const value = answers[current.id];
-        const isSocial = ["Social Cooperation", "Social Interaction", "Social Independence"].includes(current.category);
-        return (
-          <div className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
-            <style>{FONT_CSS_PKBS}</style>
-            <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 flex flex-col flex-1">
-              <div className="mb-8">
-                <div className="flex justify-between items-baseline mb-2">
-                  <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{form.title}</span>
-                  <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{idx + 1} of {askable.length}</span>
-                </div>
-                <div className="h-1 rounded-full w-full" style={{ background: "rgba(255,255,255,0.12)" }}>
-                  <div className="h-1 rounded-full" style={{ width: progress + "%", background: isSocial ? "var(--moss)" : "var(--lamplight)", transition: "width 300ms ease" }} />
-                </div>
-              </div>
-
-              <div key={current.id} className="cib-fade flex-1 flex flex-col">
-                {current.category ? (
-                  <Eyebrow dark>{current.category}</Eyebrow>
-                ) : null}
-                <h1 className="cib-display text-2xl leading-snug mb-8" style={{ color: "var(--cream-on-dark)" }}>
-                  {current.text}
-                </h1>
-
-                {current.type === "scale" ? (
-                  <div className="flex flex-col gap-3">
-                    {form.scale.map((label, i) => {
-                      const selected = value === i;
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setAnswers({ ...answers, [current.id]: i })}
-                          className="w-full rounded-2xl py-4 px-5 text-left text-base font-bold transition-all active:scale-[0.99]"
-                          style={selected
-                            ? { background: "var(--lamplight)", color: "var(--spruce-deep)", boxShadow: "0 0 0 3px rgba(242,182,83,0.35)" }
-                            : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }
-                          }
-                        >
-                          <span className="inline-block w-6 text-center mr-2 opacity-60">{i + (form.scaleStart || 0)}</span>
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <textarea
-                    value={typeof value === "string" ? value : ""}
-                    onChange={(e) => setAnswers({ ...answers, [current.id]: e.target.value })}
-                    placeholder="Whatever comes to mind is fine here."
-                    rows={5}
-                    aria-label="Your answer"
-                    className="w-full rounded-2xl p-4 text-base resize-none focus:outline-none"
-                    style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}
-                  />
-                )}
-              </div>
-
-              <div className="flex gap-3 mt-8">
-                <button onClick={back} className="rounded-2xl py-4 px-6 text-base font-bold transition-colors hover:bg-white/10" style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
-                  Back
-                </button>
-                <button onClick={next} className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-opacity-90" style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
-                  {idx + 1 >= askable.length ? "Finish" : "Next"}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // ─── DONE / RESULTS ───
-      const totals = categoryTotals();
-      const totalKeys = Object.keys(totals);
-      const answeredCount = askable.filter((q) => answers[q.id] !== undefined).length;
-
-      return (
-        <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-          <style>{FONT_CSS_PKBS}</style>
-          <div className="max-w-md mx-auto px-4 py-8 cib-fade">
-            <Eyebrow>All done</Eyebrow>
-            <h1 className="cib-display text-3xl mb-2" style={{ color: "var(--spruce)" }}>Thank you.</h1>
-            <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
-              {answeredCount} of {askable.length} items answered. Answers live only on this screen.
-              Copy them before you close or start over.
-            </p>
-
-            {/* Rater info summary */}
-            <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-              <Eyebrow>Child & Rater</Eyebrow>
-              <div className="text-sm" style={{ color: "var(--ink-soft)" }}>
-                <p><strong style={{ color: "var(--spruce)" }}>{raterInfo.childName || "(no name)"}</strong>{raterInfo.ageYears && ` · ${raterInfo.ageYears}y ${raterInfo.ageMonths || 0}m`}{raterInfo.sex && ` · ${raterInfo.sex}`}</p>
-                <p>Rated by {raterInfo.ratedBy || "(not provided)"}{raterInfo.relationship && ` (${raterInfo.relationship})`}</p>
-                <p>{raterInfo.date || new Date().toLocaleDateString()}{raterInfo.setting && ` · ${raterInfo.setting}`}</p>
-              </div>
-            </div>
-
-            {totalKeys.length > 0 && (
-              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
-                <Eyebrow dark>Raw subscale totals</Eyebrow>
-                {totalKeys.map((k) => (
-                  <div key={k} className="flex justify-between items-baseline mb-2">
-                    <span className="font-bold text-sm">{k}</span>
-                    <span className="cib-display text-xl">
-                      {totals[k].sum}
-                      <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}> / {totals[k].max}</span>
-                    </span>
-                  </div>
-                ))}
-                <p className="text-xs mt-3" style={{ color: "var(--soft-on-dark)" }}>
-                  These are raw scores. Convert to standard scores and percentiles using the official PKBS-2 manual and profile. Separate tables exist for home-based and school-based raters.
-                </p>
-              </div>
-            )}
-
-            <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-              {askable.map((q, i) => {
-                const score = getScore(q);
-                let a = "Skipped";
-                if (score !== null) a = form.scale[answers[q.id]];
-                return (
-                  <div key={q.id} className="py-3" style={i < askable.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="text-sm" style={{ color: "var(--ink-soft)" }}>{i + 1}. {q.text}</div>
-                      {score !== null && <div className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>{score}</div>}
-                    </div>
-                    <div className="font-bold mt-1" style={{ color: "var(--spruce)" }}>{a}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button onClick={copySummary} className="w-full rounded-2xl py-4 text-lg font-bold mb-3 transition-colors hover:bg-opacity-90" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
-              {copied ? "Copied" : "Copy answers"}
-            </button>
-            <div className="flex gap-3">
-              <button onClick={startFill} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
-                New check-in
-              </button>
-              <button onClick={() => setMode("build")} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
-                Back to builder
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Component 3: CESD-R Caregiver Depression Screener
-    // ─────────────────────────────────────────────────────────────
-    function CESDRRecorder({ onBack }) {
-      const [form, setForm] = useState(cesdrForm);
-      const [mode, setMode] = useState("build"); // build | intro | fill | done
-      const [answers, setAnswers] = useState({});
-      const [idx, setIdx] = useState(0);
-      const [saveState, setSaveState] = useState("idle");
-      const [copied, setCopied] = useState(false);
-      const [confirmReset, setConfirmReset] = useState(false);
-      const [showDisclaimer, setShowDisclaimer] = useState(true);
-      const [coverInfo, setCoverInfo] = useState({ caregiverName: "", childName: "", childId: "", clinician: "", date: "", interval: "" });
-      const loadedRef = useRef(false);
-
-      // Load saved form design if any
-      useEffect(() => {
-        let alive = true;
-        (async () => {
-          try {
-            if (!window.storage) {
-              if (alive) setSaveState("off");
-              loadedRef.current = true;
-              return;
-            }
-            const result = await window.storage.get(FORM_STORAGE_KEY_CESDR);
-            if (alive && result && result.value) {
-              const parsed = JSON.parse(result.value);
-              if (parsed && Array.isArray(parsed.questions)) setForm(parsed);
-            }
-          } catch (e) {
-            // ignore
-          } finally {
-            loadedRef.current = true;
-          }
-        })();
-        return () => { alive = false; };
-      }, []);
-
-      // Persist form design
-      useEffect(() => {
-        if (!loadedRef.current) return;
-        let cancelled = false;
-        const t = setTimeout(async () => {
-          try {
-            if (!window.storage) return;
-            await window.storage.set(FORM_STORAGE_KEY_CESDR, JSON.stringify(form));
-            if (!cancelled) {
-              setSaveState("saved");
-              setTimeout(() => { if (!cancelled) setSaveState("idle"); }, 1500);
-            }
-          } catch (e) {
-            if (!cancelled) setSaveState("off");
-          }
-        }, 600);
-        return () => { cancelled = true; clearTimeout(t); };
-      }, [form]);
 
       // ─── editing helpers ───
-      const updateQuestion = (id, patch) => {
-        setForm((f) => ({
-          ...f,
-          questions: f.questions.map((q) => (q.id === id ? { ...q, ...patch } : q)),
-        }));
-      };
-      const addQuestion = () => {
-        setForm((f) => ({
-          ...f,
-          questions: [...f.questions, { id: newId(), text: "", type: "scale", category: "" }],
-        }));
-      };
-      const removeQuestion = (id) => {
-        setForm((f) => ({ ...f, questions: f.questions.filter((q) => q.id !== id) }));
-      };
-      const moveQuestion = (id, dir) => {
-        setForm((f) => {
-          const qs = [...f.questions];
-          const i = qs.findIndex((q) => q.id === id);
-          const j = i + dir;
-          if (i < 0 || j < 0 || j >= qs.length) return f;
-          [qs[i], qs[j]] = [qs[j], qs[i]];
-          return { ...f, questions: qs };
-        });
-      };
-      const updateScaleLabel = (i, value) => {
-        setForm((f) => {
-          const scale = [...f.scale];
-          scale[i] = value;
-          return { ...f, scale };
-        });
-      };
-      const resetToCESDR = () => {
-        if (!confirmReset) {
-          setConfirmReset(true);
-          setTimeout(() => setConfirmReset(false), 3000);
-          return;
-        }
-        setConfirmReset(false);
-        setForm(cesdrForm());
-        setAnswers({});
-      };
-
-      const askable = form.questions.filter((q) => q.text.trim().length > 0);
-      const scaleScores = Array.isArray(form.scaleScores) ? form.scaleScores : [];
-      const itemMax = scaleScores.length ? Math.max.apply(null, scaleScores) : 3;
-
-      // ─── scoring ───
-      // The score sheet maps the five response options to 0, 1, 2, 3, 3 —
-      // "5-7 days" and "nearly every day for 2 weeks" both count as 3.
-      const getScore = (q) => {
-        const v = answers[q.id];
-        if (v === undefined || v === null) return null;
-        if (q.type === "scale" && typeof v === "number") {
-          const s = scaleScores[v];
-          return typeof s === "number" ? s : null;
-        }
-        return null;
-      };
-
-      const categoryTotals = () => {
-        const totals = {};
-        askable.forEach((q) => {
-          if (!q.category) return;
-          const score = getScore(q);
-          if (score === null) return;
-          if (!totals[q.category]) totals[q.category] = { sum: 0, n: 0, max: 0 };
-          totals[q.category].sum += score;
-          totals[q.category].n += 1;
-          totals[q.category].max += itemMax;
-        });
-        // Order the domains as they appear on the score sheet, then append
-        // anything the clinician added by hand.
-        const ordered = {};
-        CESDR_DOMAIN_ORDER.forEach((k) => { if (totals[k]) ordered[k] = totals[k]; });
-        Object.keys(totals).forEach((k) => { if (!ordered[k]) ordered[k] = totals[k]; });
-        const keys = Object.keys(ordered);
-        if (keys.length > 0) {
-          let sum = 0, n = 0, max = 0;
-          keys.forEach((k) => { sum += ordered[k].sum; n += ordered[k].n; max += ordered[k].max; });
-          ordered["Total Score"] = { sum, n, max };
-        }
-        return ordered;
-      };
-
-      const suicidalEndorsed = askable.some((q) => {
-        if (q.category !== "Suicidal Ideation") return false;
-        const s = getScore(q);
-        return s !== null && s > 0;
+      const updateQuestion = (id, patch) => setForm((f) => ({ ...f, questions: f.questions.map((q) => (q.id === id ? { ...q, ...patch } : q)) }));
+      const removeQuestion = (id) => setForm((f) => ({ ...f, questions: f.questions.filter((q) => q.id !== id) }));
+      const moveQuestion = (id, dir) => setForm((f) => {
+        const qs = [...f.questions];
+        const i = qs.findIndex((q) => q.id === id);
+        const j = i + dir;
+        if (i < 0 || j < 0 || j >= qs.length) return f;
+        [qs[i], qs[j]] = [qs[j], qs[i]];
+        return { ...f, questions: qs };
       });
-
-      const interpret = (total) => {
-        if (total > CESDR_CLINICAL_CUTOFF) {
-          return { label: "At or above the clinical threshold", color: "var(--rose)", note: "A total score above " + CESDR_CLINICAL_CUTOFF + " meets the clinical threshold on this screener. Follow up with a full diagnostic assessment." };
-        }
-        if (total > CESDR_FURTHER_CUTOFF) {
-          return { label: "Further investigation warranted", color: "var(--lamplight-deep)", note: "A total score above " + CESDR_FURTHER_CUTOFF + " warrants further investigation, even though it sits below the clinical threshold of " + CESDR_CLINICAL_CUTOFF + "." };
-        }
-        return { label: "Below screening cutoffs", color: "var(--moss)", note: "A total score of " + CESDR_FURTHER_CUTOFF + " or below sits under both screening cutoffs. Clinical judgment still governs." };
-      };
-
-      // ─── fill mode ───
-      const startFill = () => {
-        if (askable.length === 0) return;
+      const restoreDefaults = () => {
+        if (!confirmReset) { setConfirmReset(true); setTimeout(() => setConfirmReset(false), 3000); return; }
+        setConfirmReset(false);
+        setForm(instrument.build());
         setAnswers({});
-        setIdx(0);
-        setCopied(false);
-        setMode("intro");
-      };
-      const current = askable[idx];
-      const next = () => {
-        if (idx + 1 >= askable.length) setMode("done");
-        else setIdx(idx + 1);
-      };
-      const back = () => {
-        if (idx === 0) setMode("intro");
-        else setIdx(idx - 1);
       };
 
-      // ─── results helpers ───
+      // ─── summary ───
+      const answerLabel = (q) => {
+        const v = answers[q.id];
+        if (v === "skip") return "Prefer not to answer";
+        if (v === undefined || v === null) return "Not answered";
+        if (q.type === "yesno") return v === 0 ? "Yes" : "No";
+        if (q.type === "choice" && Array.isArray(q.choices)) return q.choices[v] ? q.choices[v].label : "Not answered";
+        if (q.type === "text") return typeof v === "string" && v.trim() ? v.trim() : "Not answered";
+        return form.scale[v] !== undefined ? form.scale[v] : "Not answered";
+      };
+
       const summaryText = () => {
-        const totals = categoryTotals();
-        const total = totals["Total Score"] ? totals["Total Score"].sum : 0;
-        const verdict = interpret(total);
         const lines = [
-          form.title + " — " + form.subtitle,
-          "Date of assessment: " + (coverInfo.date || new Date().toLocaleDateString()),
-          "Caregiver: " + (coverInfo.caregiverName || "(not provided)"),
-          "Child: " + (coverInfo.childName || "(not provided)") + (coverInfo.childId ? "  |  Child ID: " + coverInfo.childId : ""),
-          "Clinician: " + (coverInfo.clinician || "(not provided)"),
-          "Assessment interval: " + (coverInfo.interval || "(not selected)"),
-          "",
+          form.title + (form.subtitle ? " — " + form.subtitle : ""),
+          "Date: " + (meta.date || new Date().toLocaleDateString()),
+          "Child: " + (meta.childName || "(not provided)") + (meta.childId ? "  |  ID: " + meta.childId : ""),
+          "Caregiver: " + (meta.caregiverName || "(not provided)"),
+          "Clinician: " + (meta.clinician || "(not provided)"),
         ];
-        askable.forEach((q, i) => {
-          const score = getScore(q);
-          let a = "(skipped)";
-          if (score !== null) a = form.scale[answers[q.id]] + " (" + score + ")";
-          lines.push((i + 1) + ". " + q.text);
-          lines.push("   " + a);
-        });
-        const keys = Object.keys(totals).filter((k) => k !== "Total Score");
-        if (keys.length) {
-          lines.push("");
-          lines.push("Domain Subtotals");
-          keys.forEach((k) => {
-            lines.push(k + ": " + totals[k].sum + " of " + totals[k].max + " (" + totals[k].n + " items)");
-          });
-        }
+        if (meta.interval) lines.push("Interval: " + meta.interval);
         lines.push("");
-        lines.push("Total Score: " + total + " of " + (totals["Total Score"] ? totals["Total Score"].max : 0));
-        lines.push(verdict.label + " — " + verdict.note);
-        if (suicidalEndorsed) {
+        if (scored.headline) {
+          lines.push(scored.headline.label + ": " + scored.headline.value + " of " + scored.headline.max);
+          if (scored.headline.verdict) lines.push(scored.headline.verdict.label + " — " + scored.headline.verdict.note);
           lines.push("");
-          lines.push("*** SUICIDAL IDEATION ENDORSED (item 14 and/or 15) — further assessment required. ***");
         }
+        if (scored.rows.length) {
+          lines.push("Breakdown");
+          scored.rows.forEach((r) => lines.push("  " + r.label + ": " + r.value + " of " + r.max));
+          lines.push("");
+        }
+        scored.alerts.forEach((a) => { lines.push("** " + a.title + " **"); lines.push("   " + a.body); lines.push(""); });
+        if (scored.followUps && scored.followUps.length) {
+          lines.push("Suggested follow-up");
+          scored.followUps.forEach((f) => { lines.push("  " + f.label); lines.push("    " + f.prompt); });
+          lines.push("");
+        }
+        lines.push("Responses");
+        askable.forEach((q, i) => { lines.push("  " + (i + 1) + ". " + q.text); lines.push("     " + answerLabel(q)); });
+        if (instrument.copyright) { lines.push(""); lines.push(instrument.copyright); }
         return lines.join("\n");
       };
 
       const copySummary = async () => {
         const text = summaryText();
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-        } catch (e) {
+        try { await navigator.clipboard.writeText(text); setCopied(true); }
+        catch (e) {
           try {
             const ta = document.createElement("textarea");
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand("copy");
-            document.body.removeChild(ta);
-            setCopied(true);
-          } catch (err) {
-            setCopied(false);
-          }
+            ta.value = text; document.body.appendChild(ta); ta.select();
+            document.execCommand("copy"); document.body.removeChild(ta); setCopied(true);
+          } catch (err) { setCopied(false); }
         }
         setTimeout(() => setCopied(false), 2000);
       };
 
       const Eyebrow = ({ children, dark }) => (
-        <div className="cib-body text-xs font-bold uppercase tracking-widest mb-2" style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}>
+        <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}>
           {children}
         </div>
       );
 
-      const existingCategories = Array.from(new Set(form.questions.map((q) => q.category).filter(Boolean)));
-
-      // ─── INTRO / TITLE CARD ───
-      if (mode === "intro") {
+      // ═══ SETUP (clinician) ═══
+      if (mode === "setup") {
         return (
-          <AssessmentIntro
-            css={FONT_CSS_CESDR}
-            eyebrow="Caregiver Depression"
-            title={form.title}
-            subtitle={form.subtitle}
-            purpose="This screener asks a caregiver how often they have felt the symptoms of depression over the past week or two — mood, interest, sleep, appetite, energy, concentration, self-worth, and thoughts of self-harm — because a caregiver's depression shapes the whole family's day and often needs care of its own."
-            meta={[askable.length + " items", "Past week or two", "9 domains", "Screener, not a diagnosis"]}
-            accent="var(--plum-soft)"
-            beginLabel="Begin"
-            backLabel="Back to builder"
-            onBegin={() => setMode("fill")}
-            onBack={() => setMode("build")}
-          />
-        );
-      }
+          <div className="cib-body min-h-screen w-full cib-fade" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+            <div className="max-w-md mx-auto px-4 pt-6 pb-16 safe-bottom">
 
-      // ─── BUILD MODE ───
-      if (mode === "build") {
-        return (
-          <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-            <style>{FONT_CSS_CESDR}</style>
-            <div className="max-w-md mx-auto px-4 pb-32 pt-8">
+              <button onClick={onExit} className="text-xs font-bold uppercase tracking-wider transition-colors hover:text-[#7FA08C] mb-5" style={{ color: "var(--ink-soft)" }}>
+                &larr; All assessments
+              </button>
 
-              {/* Back to Dashboard Banner */}
-              <div className="flex justify-between items-center mb-6">
-                <button onClick={onBack} className="text-xs font-bold uppercase tracking-wider transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
-                  &larr; Back to Dashboard
-                </button>
-              </div>
+              <Eyebrow>{instrument.eyebrow}</Eyebrow>
+              <h1 className="cib-display text-3xl leading-tight mb-1" style={{ color: "var(--spruce)" }}>{form.title}</h1>
+              <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>{form.subtitle}</p>
 
-              <Eyebrow>CESD-R Recorder</Eyebrow>
-              <input
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                aria-label="Form title"
-                className="cib-display w-full bg-transparent text-3xl leading-tight mb-1 border-0"
-                style={{ color: "var(--spruce)" }}
-              />
-              <input
-                value={form.subtitle || ""}
-                onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-                aria-label="Form subtitle"
-                className="cib-body w-full bg-transparent text-sm mb-4 border-0"
-                style={{ color: "var(--ink-soft)" }}
-              />
-              <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
-                {askable.length} items loaded. Edit questions, scale labels, or domains below.
-                {saveState === "saved" && <span style={{ color: "var(--moss)" }}> Saved.</span>}
-                {saveState === "off" && <span> Saving is off here.</span>}
+              {/* The whole point of this screen: hand it over. Top, big, unmissable. */}
+              <button
+                onClick={startSession}
+                disabled={askable.length === 0}
+                className="w-full rounded-3xl px-6 py-7 text-left shadow-lg transition-transform active:scale-[0.99] mb-3"
+                style={askable.length === 0
+                  ? { background: "var(--mist)", color: "var(--ink-soft)" }
+                  : { background: "var(--spruce)", color: "var(--cream-on-dark)" }}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="cib-display text-2xl leading-tight mb-1">Hand to caregiver</div>
+                    <div className="text-sm" style={{ color: "var(--soft-on-dark)" }}>
+                      {askable.length} questions · results stay locked
+                    </div>
+                  </div>
+                  <span aria-hidden="true" className="text-3xl flex-shrink-0" style={{ color: "var(--lamplight)" }}>&rarr;</span>
+                </div>
+              </button>
+              <p className="text-xs text-center mb-8" style={{ color: "var(--ink-soft)" }}>
+                Opens on a welcome screen. Scores are never shown to the caregiver.
               </p>
 
-              {showDisclaimer && (
-                <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                  <div className="flex justify-between items-start mb-2">
-                    <Eyebrow>About this instrument</Eyebrow>
-                    <button onClick={() => setShowDisclaimer(false)} className="text-sm" style={{ color: "var(--ink-soft)" }}>✕</button>
-                  </div>
-                  <p className="text-xs mb-2" style={{ color: "var(--ink-soft)" }}>
-                    The Center for Epidemiologic Studies Depression Scale — Revised (CESD-R) is a
-                    public-domain screener. This app records responses and totals them using the
-                    Child First score sheet. It is a screener, not a diagnosis — a positive screen
-                    calls for a full clinical assessment.
-                  </p>
-                  <p className="text-xs mb-2" style={{ color: "var(--ink-soft)" }}>
-                    <strong>Cutoffs:</strong> further investigation warranted above {CESDR_FURTHER_CUTOFF};
-                    clinical threshold above {CESDR_CLINICAL_CUTOFF}. Any endorsement of item 14 or 15
-                    (suicidal ideation) requires further assessment regardless of the total.
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
-                    In Child First the CESD-R is required at baseline, 6 months, and discharge.
-                  </p>
-                  <p className="text-xs mt-2" style={{ color: "var(--ink-soft)" }}>
-                    Eaton, W. W., Smith, C., Ybarra, M., Muntaner, C., &amp; Tien, A. (2004). Center for
-                    Epidemiologic Studies Depression Scale: review and revision (CESD and CESD-R).
-                  </p>
-                </div>
-              )}
-
-              {/* Cover sheet info */}
-              <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                <Eyebrow>Cover sheet</Eyebrow>
-                <input value={coverInfo.caregiverName} onChange={(e) => setCoverInfo({ ...coverInfo, caregiverName: e.target.value })} placeholder="Caregiver name" className="w-full rounded-lg px-3 py-2 text-sm border mb-3 border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+              {/* Session details */}
+              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                <Eyebrow>Session details</Eyebrow>
                 <div className="grid grid-cols-2 gap-3 mb-3">
-                  <input value={coverInfo.childName} onChange={(e) => setCoverInfo({ ...coverInfo, childName: e.target.value })} placeholder="Child name (Last, First)" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                  <input value={coverInfo.childId} onChange={(e) => setCoverInfo({ ...coverInfo, childId: e.target.value })} placeholder="Child ID #" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.childName} onChange={(e) => setMeta({ ...meta, childName: e.target.value })} placeholder="Child name" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.childId} onChange={(e) => setMeta({ ...meta, childId: e.target.value })} placeholder="Child ID" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.caregiverName} onChange={(e) => setMeta({ ...meta, caregiverName: e.target.value })} placeholder="Caregiver name" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.clinician} onChange={(e) => setMeta({ ...meta, clinician: e.target.value })} placeholder="Clinician" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.date} onChange={(e) => setMeta({ ...meta, date: e.target.value })} type="date" aria-label="Date of assessment" className="col-span-2 rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
                 </div>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <input value={coverInfo.clinician} onChange={(e) => setCoverInfo({ ...coverInfo, clinician: e.target.value })} placeholder="Clinician" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                  <input value={coverInfo.date} onChange={(e) => setCoverInfo({ ...coverInfo, date: e.target.value })} placeholder="Date of assessment" type="date" aria-label="Date of assessment" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                </div>
-                <p className="text-xs mb-2" style={{ color: "var(--ink-soft)" }}>Assessment interval (required at each):</p>
                 <div className="flex gap-2">
                   {["Baseline", "6-months", "Discharge"].map((iv) => (
-                    <button
-                      key={iv}
-                      onClick={() => setCoverInfo({ ...coverInfo, interval: coverInfo.interval === iv ? "" : iv })}
+                    <button key={iv} onClick={() => setMeta({ ...meta, interval: meta.interval === iv ? "" : iv })}
                       className="flex-1 rounded-lg py-2 text-sm font-bold transition-all"
-                      style={coverInfo.interval === iv
-                        ? { background: "var(--plum)", color: "var(--cream-on-dark)" }
-                        : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}
-                    >
+                      style={meta.interval === iv
+                        ? { background: instrument.accent, color: "var(--cream-on-dark)" }
+                        : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>
                       {iv}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                <Eyebrow>Answer scale</Eyebrow>
-                <p className="text-xs mb-3" style={{ color: "var(--ink-soft)" }}>
-                  How often the caregiver has felt this way in the past week or so. Per the official
-                  score sheet, the top two options both score {itemMax}.
+              {/* Handoff options */}
+              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                <Eyebrow>Handoff</Eyebrow>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={autoAdvance} onChange={(e) => setAutoAdvance(e.target.checked)} className="mt-1 w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                    <strong style={{ color: "var(--spruce)" }}>Advance automatically</strong> — moving to the next
+                    question as soon as an answer is tapped, so a caregiver taps once per question instead of twice.
+                  </span>
+                </label>
+              </div>
+
+              {/* About */}
+              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                <Eyebrow>About this instrument</Eyebrow>
+                <p className="text-xs mb-2" style={{ color: "var(--ink-soft)" }}>{instrument.blurb}</p>
+                {instrument.copyright && <p className="text-xs" style={{ color: "var(--ink-soft)" }}>{instrument.copyright}</p>}
+                <p className="text-xs mt-2" style={{ color: "var(--ink-soft)" }}>
+                  This tool records responses and totals them. Interpretation and clinical
+                  decisions remain yours, using the official manual.
                 </p>
-                {form.scale.map((label, i) => (
-                  <div key={i} className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: "var(--mist)", color: "var(--spruce)" }}>
-                      {typeof scaleScores[i] === "number" ? scaleScores[i] : "–"}
-                    </span>
-                    <input
-                      value={label}
-                      onChange={(e) => updateScaleLabel(i, e.target.value)}
-                      aria-label={"Scale option " + i}
-                      className="flex-1 rounded-lg px-3 py-2 text-sm border"
-                      style={{ borderColor: "var(--mist)", background: "var(--paper)" }}
-                    />
-                  </div>
-                ))}
               </div>
 
-              <Eyebrow>Questions</Eyebrow>
-              {form.questions.map((q, i) => (
-                <div key={q.id} className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="cib-display text-lg" style={{ color: "var(--moss)" }}>{i + 1}</span>
-                    <div className="flex gap-1">
-                      <button onClick={() => moveQuestion(q.id, -1)} aria-label="Move up" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--spruce)" }}>↑</button>
-                      <button onClick={() => moveQuestion(q.id, 1)} aria-label="Move down" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--spruce)" }}>↓</button>
-                      <button onClick={() => removeQuestion(q.id)} aria-label="Delete" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--ink-soft)" }}>✕</button>
+              {/* Question bank, collapsed — a caregiver must never land in an editor */}
+              <button onClick={() => setShowEditor(!showEditor)}
+                className="w-full rounded-2xl p-4 text-left flex items-center justify-between transition-colors hover:bg-[#FAF8F5]"
+                style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                <span className="text-sm font-bold" style={{ color: "var(--spruce)" }}>
+                  Edit questions
+                  <span className="font-normal" style={{ color: "var(--ink-soft)" }}> · {askable.length} loaded</span>
+                  {saveState === "saved" && <span style={{ color: "var(--moss)" }}> · Saved</span>}
+                </span>
+                <span aria-hidden="true" style={{ color: "var(--ink-soft)" }}>{showEditor ? "▲" : "▼"}</span>
+              </button>
+
+              {showEditor && (
+                <div className="mt-4">
+                  <p className="text-xs mb-4" style={{ color: "var(--ink-soft)" }}>
+                    Edits are saved on this device only.
+                    {instrument.copyright && " This instrument's terms require items and item order to stay unmodified."}
+                  </p>
+                  {form.questions.map((q, i) => (
+                    <div key={q.id} className="rounded-2xl p-4 mb-3" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="cib-display text-lg" style={{ color: "var(--moss)" }}>{i + 1}</span>
+                        <div className="flex gap-1">
+                          <button onClick={() => moveQuestion(q.id, -1)} aria-label="Move up" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--spruce)" }}>↑</button>
+                          <button onClick={() => moveQuestion(q.id, 1)} aria-label="Move down" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--spruce)" }}>↓</button>
+                          <button onClick={() => removeQuestion(q.id)} aria-label="Delete" className="w-8 h-8 rounded-lg text-sm" style={{ background: "var(--paper)", color: "var(--ink-soft)" }}>✕</button>
+                        </div>
+                      </div>
+                      <textarea value={q.text} onChange={(e) => updateQuestion(q.id, { text: e.target.value })} rows={2}
+                        aria-label={"Question " + (i + 1)}
+                        className="w-full rounded-lg px-3 py-2 text-base border mb-2 resize-none border-[#E4E9E2]"
+                        style={{ background: "var(--paper)", color: "var(--ink)" }} />
+                      <input value={q.category || ""} onChange={(e) => updateQuestion(q.id, { category: e.target.value })} placeholder="Section"
+                        aria-label={"Question " + (i + 1) + " section"}
+                        className="w-full rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
                     </div>
-                  </div>
-                  <textarea
-                    value={q.text}
-                    onChange={(e) => updateQuestion(q.id, { text: e.target.value })}
-                    placeholder="Write your question here"
-                    rows={2}
-                    aria-label={"Question " + (i + 1)}
-                    className="w-full rounded-lg px-3 py-2 text-base border mb-3 resize-none border-[#E4E9E2]"
-                    style={{ background: "var(--paper)", color: "var(--ink)" }}
-                  />
-                  <input
-                    value={q.category}
-                    onChange={(e) => updateQuestion(q.id, { category: e.target.value })}
-                    placeholder="Domain"
-                    aria-label={"Question " + (i + 1) + " domain"}
-                    className="w-full rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]"
-                    style={{ background: "var(--paper)" }}
-                  />
-                  {existingCategories.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {existingCategories.map((c) => (
-                        <button key={c} onClick={() => updateQuestion(q.id, { category: c })} className="text-xs px-2 py-1 rounded-full transition-colors hover:bg-[#c3d1c8]" style={{ background: "var(--mist)", color: "var(--spruce)" }}>{c}</button>
-                      ))}
-                    </div>
-                  )}
+                  ))}
+                  <button onClick={restoreDefaults} className="w-full py-3 text-sm" style={{ color: confirmReset ? "var(--alert)" : "var(--ink-soft)" }}>
+                    {confirmReset ? "Tap again to restore the original items" : "Restore original items"}
+                  </button>
                 </div>
-              ))}
-
-              <button onClick={addQuestion} className="w-full rounded-2xl py-3 text-base font-bold mb-3 transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "2px dashed var(--moss)" }}>
-                + Add a question
-              </button>
-
-              <button onClick={resetToCESDR} className="w-full py-2 text-sm transition-colors hover:text-opacity-80" style={{ color: confirmReset ? "var(--alert)" : "var(--ink-soft)" }}>
-                {confirmReset ? "Tap again to restore CESD-R defaults" : "Restore CESD-R defaults"}
-              </button>
-            </div>
-
-            <div className="fixed bottom-0 left-0 right-0 px-4 py-4" style={{ background: "linear-gradient(transparent, var(--paper) 40%)" }}>
-              <div className="max-w-md mx-auto">
-                <button
-                  onClick={startFill}
-                  disabled={askable.length === 0}
-                  className="w-full rounded-2xl py-4 text-lg font-bold shadow-lg transition-transform active:scale-[0.98]"
-                  style={askable.length === 0 ? { background: "var(--mist)", color: "var(--ink-soft)" } : { background: "var(--spruce)", color: "var(--cream-on-dark)" }}
-                >
-                  Hand it over · {askable.length} items
-                </button>
-              </div>
+              )}
             </div>
           </div>
         );
       }
 
-      // ─── FILL MODE ───
+      // ═══ INTRO (title card) ═══
+      if (mode === "intro") {
+        return (
+          <AssessmentIntro
+            eyebrow={instrument.eyebrow}
+            title={form.title}
+            subtitle={form.subtitle}
+            purpose={instrument.purpose}
+            note={instrument.parentNote}
+            meta={instrument.meta}
+            accent={instrument.accentVar}
+            beginLabel="Start"
+            backLabel="Back"
+            onBegin={() => setMode("fill")}
+            onBack={() => setMode("setup")}
+          />
+        );
+      }
+
+      // ═══ FILL (parent) ═══
       if (mode === "fill" && current) {
         const progress = ((idx + 1) / askable.length) * 100;
         const value = answers[current.id];
-        const isSI = current.category === "Suicidal Ideation";
+        const half = Math.floor(askable.length / 2);
+        const encouragement =
+          idx + 1 === half && askable.length >= 12 ? "Halfway there." :
+          idx + 1 === askable.length ? "Last one." : null;
+
+        const optionButton = (label, selected, onClick, key, hint) => (
+          <button key={key} onClick={onClick}
+            className="w-full rounded-2xl py-5 px-5 text-left text-lg font-bold transition-all active:scale-[0.99]"
+            style={selected
+              ? { background: "var(--lamplight)", color: "var(--spruce-deep)", boxShadow: "0 0 0 3px rgba(242,182,83,0.35)" }
+              : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+            {label}
+            {hint ? <span className="block text-sm font-normal mt-0.5" style={{ opacity: 0.7 }}>{hint}</span> : null}
+          </button>
+        );
+
         return (
-          <div className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
-            <style>{FONT_CSS_CESDR}</style>
-            <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 flex flex-col flex-1">
-              <div className="mb-8">
+          <div className="cib-body min-h-screen w-full flex flex-col" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+            <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
+
+              <div className="mb-7">
                 <div className="flex justify-between items-baseline mb-2">
-                  <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{form.title}</span>
-                  <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{idx + 1} of {askable.length}</span>
+                  <span className="text-sm font-bold" style={{ color: "var(--soft-on-dark)" }}>
+                    Question {idx + 1} of {askable.length}
+                  </span>
+                  {encouragement && <span className="text-sm" style={{ color: "var(--lamplight)" }}>{encouragement}</span>}
                 </div>
-                <div className="h-1 rounded-full w-full" style={{ background: "rgba(255,255,255,0.12)" }}>
-                  <div className="h-1 rounded-full" style={{ width: progress + "%", background: isSI ? "var(--rose-soft)" : "var(--plum-soft)", transition: "width 300ms ease" }} />
+                <div className="h-1.5 rounded-full w-full" style={{ background: "rgba(255,255,255,0.12)" }}>
+                  <div className="h-1.5 rounded-full" style={{ width: progress + "%", background: "var(--lamplight)", transition: "width 300ms ease" }} />
                 </div>
               </div>
 
               <div key={current.id} className="cib-fade flex-1 flex flex-col">
-                {current.category ? <Eyebrow dark>{current.category}</Eyebrow> : null}
-                <p className="text-sm mb-3" style={{ color: "var(--soft-on-dark)" }}>
-                  In the past week or so, how often…
-                </p>
-                <h1 className="cib-display text-2xl leading-snug mb-8" style={{ color: "var(--cream-on-dark)" }}>
+                {current.category ? (
+                  <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--soft-on-dark)", letterSpacing: "0.14em" }}>
+                    {current.category}
+                  </div>
+                ) : null}
+
+                <h1 className="cib-display text-2xl leading-snug mb-3" style={{ color: "var(--cream-on-dark)" }}>
                   {current.text}
                 </h1>
+                {current.example ? (
+                  <p className="text-base leading-relaxed mb-6" style={{ color: "var(--soft-on-dark)" }}>{current.example}</p>
+                ) : <div className="mb-6" />}
 
-                {current.type === "scale" ? (
+                {current.type === "yesno" ? (
                   <div className="flex flex-col gap-3">
-                    {form.scale.map((label, i) => {
-                      const selected = value === i;
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setAnswers({ ...answers, [current.id]: i })}
-                          className="w-full rounded-2xl py-4 px-5 text-left text-base font-bold transition-all active:scale-[0.99]"
-                          style={selected
-                            ? { background: "var(--lamplight)", color: "var(--spruce-deep)", boxShadow: "0 0 0 3px rgba(242,182,83,0.35)" }
-                            : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }
-                          }
-                        >
-                          <span className="inline-block w-6 text-center mr-2 opacity-60">{typeof scaleScores[i] === "number" ? scaleScores[i] : "–"}</span>
-                          {label}
-                        </button>
-                      );
-                    })}
+                    {optionButton("Yes", value === 0, () => choose(0), "y")}
+                    {optionButton("No", value === 1, () => choose(1), "n")}
                   </div>
-                ) : (
-                  <textarea
-                    value={typeof value === "string" ? value : ""}
-                    onChange={(e) => setAnswers({ ...answers, [current.id]: e.target.value })}
-                    placeholder="Whatever comes to mind is fine here."
-                    rows={5}
-                    aria-label="Your answer"
+                ) : current.type === "choice" && Array.isArray(current.choices) ? (
+                  <div className="flex flex-col gap-3">
+                    {current.choices.map((c, i) => optionButton(c.label, value === i, () => choose(i), i))}
+                  </div>
+                ) : current.type === "text" ? (
+                  <textarea value={typeof value === "string" ? value : ""} onChange={(e) => setAnswers({ ...answers, [current.id]: e.target.value })}
+                    placeholder="Whatever comes to mind is fine here." rows={5} aria-label="Your answer"
                     className="w-full rounded-2xl p-4 text-base resize-none focus:outline-none"
-                    style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}
-                  />
+                    style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }} />
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {form.scale.map((label, i) => optionButton(label, value === i, () => choose(i), i))}
+                  </div>
+                )}
+
+                {form.allowSkip && current.type !== "text" && (
+                  <button onClick={() => choose("skip")}
+                    className="mt-4 self-center text-sm underline transition-colors hover:text-white"
+                    style={{ color: value === "skip" ? "var(--lamplight)" : "var(--soft-on-dark)" }}>
+                    {value === "skip" ? "Skipped — tap an answer to change" : "I'd rather not answer this"}
+                  </button>
                 )}
               </div>
 
               <div className="flex gap-3 mt-8">
-                <button onClick={back} className="rounded-2xl py-4 px-6 text-base font-bold transition-colors hover:bg-white/10" style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                <button onClick={goBack} className="rounded-2xl py-4 px-6 text-base font-bold transition-colors hover:bg-white/10"
+                  style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
                   Back
                 </button>
-                <button onClick={next} className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-opacity-90" style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
+                <button onClick={goNext} className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-opacity-90"
+                  style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
                   {idx + 1 >= askable.length ? "Finish" : "Next"}
                 </button>
               </div>
@@ -2151,105 +1509,135 @@
         );
       }
 
-      // ─── DONE / RESULTS ───
-      const totals = categoryTotals();
-      const domainKeys = Object.keys(totals).filter((k) => k !== "Total Score");
-      const grand = totals["Total Score"] || { sum: 0, n: 0, max: 0 };
-      const verdict = interpret(grand.sum);
+      // ═══ THANKS (parent) ═══
+      if (mode === "thanks") {
+        return <ParentThankYou onUnlock={() => { setGateReturn("results"); setMode("gate"); }} />;
+      }
+
+      // ═══ GATE ═══
+      if (mode === "gate") {
+        return (
+          <ClinicianGate
+            onPass={() => setMode(gateReturn)}
+            onCancel={() => setMode("thanks")}
+          />
+        );
+      }
+
+      // ═══ RESULTS (clinician) ═══
       const answeredCount = askable.filter((q) => answers[q.id] !== undefined).length;
+      const skippedCount = askable.filter((q) => answers[q.id] === "skip").length;
+      const hv = scored.headline && scored.headline.verdict;
 
       return (
-        <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-          <style>{FONT_CSS_CESDR}</style>
-          <div className="max-w-md mx-auto px-4 py-8 cib-fade">
-            <Eyebrow>All done</Eyebrow>
-            <h1 className="cib-display text-3xl mb-2" style={{ color: "var(--spruce)" }}>Thank you.</h1>
+        <div className="cib-body min-h-screen w-full cib-fade" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+          <div className="max-w-md mx-auto px-4 py-8 safe-bottom">
+
+            <Eyebrow>Provider snapshot</Eyebrow>
+            <h1 className="cib-display text-3xl mb-1" style={{ color: "var(--spruce)" }}>{form.title}</h1>
             <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
-              {answeredCount} of {askable.length} items answered. Answers live only on this screen.
-              Copy them before you close or start over.
+              {answeredCount} of {askable.length} answered
+              {skippedCount > 0 && " · " + skippedCount + " skipped"}
+              {meta.childName ? " · " + meta.childName : ""}
+              {" · "}{meta.date || new Date().toLocaleDateString()}
             </p>
 
-            {suicidalEndorsed && (
-              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--rose)", color: "var(--cream-on-dark)" }}>
-                <Eyebrow dark>Suicidal ideation endorsed</Eyebrow>
-                <p className="text-sm font-bold mb-1">Item 14 and/or 15 was endorsed.</p>
-                <p className="text-xs" style={{ color: "var(--rose-soft)" }}>
-                  Any endorsement on either suicidal ideation item requires further assessment now,
-                  regardless of the total score. Follow your program's safety protocol.
-                </p>
+            {/* Headline */}
+            {scored.headline && (
+              <div className="rounded-2xl p-5 mb-4" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
+                <Eyebrow dark>{scored.headline.label}</Eyebrow>
+                <div className="flex justify-between items-baseline mb-3 gap-3">
+                  <span className="cib-display text-5xl">
+                    {scored.headline.value}
+                    <span className="text-base" style={{ color: "var(--soft-on-dark)" }}> / {scored.headline.max}</span>
+                  </span>
+                  {hv && (
+                    <span className="text-xs font-bold px-3 py-2 rounded-full text-right" style={{ background: TONE_COLOR[hv.tone], color: "var(--cream-on-dark)" }}>
+                      {hv.label}
+                    </span>
+                  )}
+                </div>
+                {hv && <p className="text-xs leading-relaxed" style={{ color: "var(--soft-on-dark)" }}>{hv.note}</p>}
               </div>
             )}
 
-            {/* Cover sheet summary */}
-            <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-              <Eyebrow>Cover sheet</Eyebrow>
-              <div className="text-sm" style={{ color: "var(--ink-soft)" }}>
-                <p><strong style={{ color: "var(--spruce)" }}>{coverInfo.caregiverName || "(no caregiver name)"}</strong></p>
-                <p>Child: {coverInfo.childName || "(not provided)"}{coverInfo.childId && ` · ID ${coverInfo.childId}`}</p>
-                <p>Clinician: {coverInfo.clinician || "(not provided)"}</p>
-                <p>{coverInfo.date || new Date().toLocaleDateString()}{coverInfo.interval && ` · ${coverInfo.interval}`}</p>
+            {/* Alerts */}
+            {scored.alerts.map((a, i) => (
+              <div key={i} className="rounded-2xl p-4 mb-3" style={{
+                background: a.tone === "alert" ? "var(--rose)" : a.tone === "watch" ? "#FBF1DC" : "var(--card)",
+                color: a.tone === "alert" ? "var(--cream-on-dark)" : "var(--ink)",
+                border: a.tone === "alert" ? "none" : "1px solid var(--mist)",
+              }}>
+                <p className="text-sm font-bold mb-1">{a.title}</p>
+                <p className="text-xs leading-relaxed" style={{ color: a.tone === "alert" ? "var(--rose-soft)" : "var(--ink-soft)" }}>{a.body}</p>
               </div>
-            </div>
+            ))}
 
-            {/* Total + interpretation */}
-            <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
-              <Eyebrow dark>Total score</Eyebrow>
-              <div className="flex justify-between items-baseline mb-3">
-                <span className="cib-display text-4xl">{grand.sum}<span className="text-base" style={{ color: "var(--soft-on-dark)" }}> / {grand.max}</span></span>
-                <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: verdict.color, color: "var(--cream-on-dark)" }}>
-                  {verdict.label}
-                </span>
-              </div>
-              <p className="text-xs" style={{ color: "var(--soft-on-dark)" }}>{verdict.note}</p>
-            </div>
-
-            {domainKeys.length > 0 && (
+            {/* Breakdown */}
+            {scored.rows.length > 0 && (
               <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                <Eyebrow>Domain subtotals</Eyebrow>
-                {domainKeys.map((k) => (
-                  <div key={k} className="flex justify-between items-baseline mb-2">
-                    <span className="font-bold text-sm" style={{ color: k === "Suicidal Ideation" && suicidalEndorsed ? "var(--rose)" : "var(--spruce)" }}>
-                      {k}{k === "Suicidal Ideation" ? " *" : ""}
+                <Eyebrow>Breakdown</Eyebrow>
+                {scored.rows.map((r, i) => (
+                  <div key={i} className="flex justify-between items-baseline gap-3 py-1.5" style={{ opacity: r.muted ? 0.45 : 1 }}>
+                    <span className={"text-sm " + (r.emphasis ? "font-bold" : "")} style={{ color: r.tone === "alert" ? "var(--rose)" : r.emphasis ? "var(--spruce)" : "var(--ink-soft)" }}>
+                      {r.label}
                     </span>
-                    <span className="cib-display text-xl" style={{ color: "var(--spruce)" }}>
-                      {totals[k].sum}
-                      <span className="text-sm" style={{ color: "var(--ink-soft)" }}> / {totals[k].max}</span>
+                    <span className={"cib-display flex-shrink-0 " + (r.emphasis ? "text-xl" : "text-lg")} style={{ color: r.tone === "alert" ? "var(--rose)" : "var(--spruce)" }}>
+                      {r.value}<span className="text-xs" style={{ color: "var(--ink-soft)" }}> / {r.max}</span>
                     </span>
                   </div>
                 ))}
-                <p className="text-xs mt-3" style={{ color: "var(--ink-soft)" }}>
-                  * Any endorsement on either suicidal ideation item requires further assessment.
-                </p>
               </div>
             )}
 
-            <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-              {askable.map((q, i) => {
-                const score = getScore(q);
-                let a = "Skipped";
-                if (score !== null) a = form.scale[answers[q.id]];
-                else if (q.type === "text" && typeof answers[q.id] === "string") a = answers[q.id].trim();
-                return (
-                  <div key={q.id} className="py-3" style={i < askable.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="text-sm" style={{ color: "var(--ink-soft)" }}>{i + 1}. {q.text}</div>
-                      {score !== null && <div className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>{score}</div>}
-                    </div>
-                    <div className="font-bold mt-1" style={{ color: "var(--spruce)" }}>{a}</div>
+            {/* Follow-up prompts */}
+            {scored.followUps && scored.followUps.length > 0 && (
+              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                <Eyebrow>Suggested follow-up</Eyebrow>
+                <p className="text-xs mb-3" style={{ color: "var(--ink-soft)" }}>
+                  Conversation openers for the sections that scored. These are a menu, not a script — never read aloud.
+                </p>
+                {scored.followUps.map((f, i) => (
+                  <div key={i} className="py-2" style={i < scored.followUps.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
+                    <p className="text-sm font-bold mb-1" style={{ color: "var(--spruce)" }}>{f.label}</p>
+                    <p className="text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>{f.prompt}</p>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
+
+            {/* Item-by-item */}
+            <details className="rounded-2xl mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+              <summary className="p-4 text-sm font-bold cursor-pointer" style={{ color: "var(--spruce)" }}>
+                Every response ({askable.length})
+              </summary>
+              <div className="px-4 pb-4">
+                {askable.map((q, i) => {
+                  const s = scored.itemScore ? scored.itemScore(q) : null;
+                  return (
+                    <div key={q.id} className="py-2.5" style={i < askable.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="text-xs" style={{ color: "var(--ink-soft)" }}>{i + 1}. {q.text}</div>
+                        {s !== null && s !== undefined && <div className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>{s}</div>}
+                      </div>
+                      <div className="text-sm font-bold mt-0.5" style={{ color: answers[q.id] === "skip" ? "var(--ink-soft)" : "var(--spruce)" }}>
+                        {answerLabel(q)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
 
             <button onClick={copySummary} className="w-full rounded-2xl py-4 text-lg font-bold mb-3 transition-colors hover:bg-opacity-90" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
-              {copied ? "Copied" : "Copy answers"}
+              {copied ? "Copied" : "Copy for the record"}
             </button>
             <div className="flex gap-3">
-              <button onClick={startFill} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
-                New check-in
+              <button onClick={startSession} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
+                New session
               </button>
-              <button onClick={() => setMode("build")} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
-                Back to builder
+              <button onClick={() => setMode("setup")} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
+                Setup
               </button>
             </div>
           </div>
@@ -2258,161 +1646,77 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Component 4: Portal Router / Selection Dashboard
+    // Dashboard / router
     // ─────────────────────────────────────────────────────────────
     function App() {
-      const [assessment, setAssessment] = useState(null);
+      const [active, setActive] = useState(null);
 
-      // Parse location hash for deep-linking routing
       useEffect(() => {
         const handleHash = () => {
-          const hash = window.location.hash;
-          if (hash === "#psi") {
-            setAssessment("psi");
-          } else if (hash === "#pkbs") {
-            setAssessment("pkbs");
-          } else if (hash === "#cesdr") {
-            setAssessment("cesdr");
-          } else {
-            setAssessment(null);
-          }
+          const id = window.location.hash.replace("#", "");
+          setActive(instrumentById(id) ? id : null);
         };
-        handleHash(); // Run on mount
+        handleHash();
         window.addEventListener("hashchange", handleHash);
         return () => window.removeEventListener("hashchange", handleHash);
       }, []);
 
-      const selectAssessment = (type) => {
-        window.location.hash = type;
-      };
+      const open = (id) => { window.location.hash = id; };
+      const close = () => { window.location.hash = ""; };
 
-      const clearAssessment = () => {
-        window.location.hash = "";
-      };
-
-      if (assessment === "psi") {
-        return <PSI4SFRecorder onBack={clearAssessment} />;
-      }
-
-      if (assessment === "pkbs") {
-        return <PKBS2Recorder onBack={clearAssessment} />;
-      }
-
-      if (assessment === "cesdr") {
-        return <CESDRRecorder onBack={clearAssessment} />;
-      }
+      const instrument = instrumentById(active);
+      if (instrument) return <Recorder key={instrument.id} instrument={instrument} onExit={close} />;
 
       return (
-        <div className="cib-body min-h-screen w-full flex flex-col justify-between" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-          
-          <div className="max-w-md mx-auto w-full px-5 py-12 flex flex-col items-center">
-            
-            {/* Brand Header */}
+        <div className="cib-body min-h-screen w-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+          <div className="max-w-md mx-auto w-full px-5 py-12 safe-bottom">
+
             <div className="text-center mb-10">
-              <h1 className="cib-display text-3xl font-bold tracking-tight mb-2 text-[#1F3A34]">
+              <h1 className="cib-display text-3xl font-bold tracking-tight mb-2" style={{ color: "var(--spruce)" }}>
                 Assessment Recorders
               </h1>
-              <p className="text-sm text-[#5C6E66]">
-                Phone-first digital response recorders and raw score calculators for clinicians.
+              <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                Phone-first instruments built to hand to a caregiver.
               </p>
             </div>
 
-            {/* Selection Cards */}
-            <div className="w-full flex flex-col gap-5 mb-12">
-              
-              {/* PSI-4-SF Card */}
-              <button 
-                onClick={() => selectAssessment("psi")} 
-                className="w-full text-left bg-white p-6 rounded-2xl border border-[#E4E9E2] hover:border-[#7FA08C] hover:shadow-md transition-all active:scale-[0.99] group"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7FA08C]">
-                    Parenting Stress
-                  </span>
-                  <span className="text-xs font-medium text-[#5C6E66] bg-[#E4E9E2] px-2.5 py-1 rounded-full">
-                    36 Items
-                  </span>
-                </div>
-                <h2 className="cib-display text-xl font-bold text-[#1F3A34] mb-2 group-hover:text-[#7FA08C] transition-colors">
-                  PSI-4-SF Recorder
-                </h2>
-                <p className="text-sm text-[#5C6E66]">
-                  Record answers and compute raw subscale scores for Parent Distress, Dysfunctional Interaction, and Difficult Child.
-                </p>
-              </button>
+            <div className="flex flex-col gap-4 mb-8">
+              {INSTRUMENTS.map((ins) => (
+                <button key={ins.id} onClick={() => open(ins.id)}
+                  className="w-full text-left bg-white p-6 rounded-2xl border border-[#E4E9E2] hover:shadow-md transition-all active:scale-[0.99] group"
+                  style={{ borderLeft: "5px solid " + ins.accent }}>
+                  <div className="flex justify-between items-start mb-3 gap-3">
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: ins.accent }}>{ins.eyebrow}</span>
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0" style={{ color: "var(--ink-soft)", background: "var(--mist)" }}>{ins.tag}</span>
+                  </div>
+                  <h2 className="cib-display text-xl font-bold mb-2" style={{ color: "var(--spruce)" }}>{ins.card}</h2>
+                  <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{ins.blurb}</p>
+                </button>
+              ))}
 
-              {/* PKBS-2 Card */}
-              <button 
-                onClick={() => selectAssessment("pkbs")} 
-                className="w-full text-left bg-white p-6 rounded-2xl border border-[#E4E9E2] hover:border-[#7FA08C] hover:shadow-md transition-all active:scale-[0.99] group"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#9E4A5B]">
-                    Preschool &amp; Kindergarten
-                  </span>
-                  <span className="text-xs font-medium text-[#5C6E66] bg-[#E4E9E2] px-2.5 py-1 rounded-full">
-                    76 Items
-                  </span>
+              {/* Clinician-completed, so it lives on its own page */}
+              <a href="cca-assessment.html"
+                className="block w-full text-left bg-white p-6 rounded-2xl border border-[#E4E9E2] hover:shadow-md transition-all active:scale-[0.99] no-underline"
+                style={{ borderLeft: "5px solid var(--lamplight-deep)" }}>
+                <div className="flex justify-between items-start mb-3 gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--lamplight-deep)" }}>Clinician-completed</span>
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0" style={{ color: "var(--ink-soft)", background: "var(--mist)" }}>11 sections</span>
                 </div>
-                <h2 className="cib-display text-xl font-bold text-[#1F3A34] mb-2 group-hover:text-[#9E4A5B] transition-colors">
-                  PKBS-2 Recorder
-                </h2>
-                <p className="text-sm text-[#5C6E66]">
-                  Record observations of Social Skills (Cooperation, Interaction, Independence) and Problem Behaviors.
+                <h2 className="cib-display text-xl font-bold mb-2" style={{ color: "var(--spruce)" }}>CCA &amp; Comprehensive CF Assessment</h2>
+                <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+                  The full clinical assessment — risk and protective factors, mental status, developmental and health history, formulation, and treatment recommendations.
                 </p>
-              </button>
-
-              {/* CESD-R Card */}
-              <button 
-                onClick={() => selectAssessment("cesdr")} 
-                className="w-full text-left bg-white p-6 rounded-2xl border border-[#E4E9E2] hover:border-[#6B5B8C] hover:shadow-md transition-all active:scale-[0.99] group"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#6B5B8C]">
-                    Caregiver Depression
-                  </span>
-                  <span className="text-xs font-medium text-[#5C6E66] bg-[#E4E9E2] px-2.5 py-1 rounded-full">
-                    20 Items
-                  </span>
-                </div>
-                <h2 className="cib-display text-xl font-bold text-[#1F3A34] mb-2 group-hover:text-[#6B5B8C] transition-colors">
-                  CESD-R Recorder
-                </h2>
-                <p className="text-sm text-[#5C6E66]">
-                  Screen a caregiver for depression symptoms over the past week and compute domain subtotals, the total score against both cutoffs, and the suicidal ideation flag.
-                </p>
-              </button>
-
-              {/* CCA & Comprehensive CF Assessment Card */}
-              <button 
-                onClick={() => { window.location.href = "cca-assessment.html"; }} 
-                className="w-full text-left bg-white p-6 rounded-2xl border border-[#E4E9E2] hover:border-[#D99A2B] hover:shadow-md transition-all active:scale-[0.99] group"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#D99A2B]">
-                    Child First
-                  </span>
-                  <span className="text-xs font-medium text-[#5C6E66] bg-[#E4E9E2] px-2.5 py-1 rounded-full">
-                    10 Sections
-                  </span>
-                </div>
-                <h2 className="cib-display text-xl font-bold text-[#1F3A34] mb-2 group-hover:text-[#D99A2B] transition-colors">
-                  CCA &amp; Comprehensive CF Assessment
-                </h2>
-                <p className="text-sm text-[#5C6E66]">
-                  Complete the full Child First assessment section by section — risk and protective factors, mental status, developmental and health history, formulation, and treatment recommendations.
-                </p>
-              </button>
-
+              </a>
             </div>
 
-            {/* Footer info */}
-            <div className="text-center text-xs text-[#5C6E66] border-t border-[#E4E9E2] pt-6 w-full">
-              <p className="mb-4">
-                These tools are for digital recording convenience only. Scoring interpretation must be conducted by qualified professionals using official clinical manuals.
+            <div className="text-center text-xs pt-6" style={{ color: "var(--ink-soft)", borderTop: "1px solid var(--mist)" }}>
+              <p className="mb-2">
+                These tools record and total responses. Scoring interpretation and clinical
+                decisions must be made by a qualified professional using the official manual
+                for each instrument.
               </p>
+              <p>Caregiver-facing screens never display scores.</p>
             </div>
-
           </div>
         </div>
       );
