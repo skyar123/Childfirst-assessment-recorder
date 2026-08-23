@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCA & Comprehensive Child First Assessment — Digital Questionnaire</title>
+  <meta name="description" content="Phone-first digital questionnaire for the CCA & Comprehensive Child First Assessment, with section navigation, autosave, and copyable summary.">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- CDN Links for React, ReactDOM, Babel, and Tailwind CSS -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --spruce: #1F3A34;
+      --spruce-deep: #162B26;
+      --paper: #F7F4EC;
+      --card: #FFFFFF;
+      --ink: #22312C;
+      --ink-soft: #5C6E66;
+      --lamplight: #F2B653;
+      --lamplight-deep: #D99A2B;
+      --moss: #7FA08C;
+      --mist: #E4E9E2;
+      --cream-on-dark: #F4EFE4;
+      --soft-on-dark: #A8BBAF;
+      --alert: #B4552E;
+      --rose: #9E4A5B;
+      --rose-soft: #C47A89;
+    }
+    .cib-display { font-family: 'Young Serif', Georgia, serif; }
+    .cib-body { font-family: 'Karla', system-ui, sans-serif; }
+    .cib-fade { animation: cibFade 320ms ease both; }
+    @keyframes cibFade {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cib-fade { animation: none; }
+    }
+    textarea:focus, input:focus, button:focus-visible, select:focus-visible {
+      outline: 3px solid var(--lamplight);
+      outline-offset: 2px;
+    }
+  </style>
+
+  <script>
+    // LocalStorage Shim for window.storage to persist state in standard browsers
+    if (!window.storage) {
+      window.storage = {
+        get: async (key) => {
+          try {
+            const value = localStorage.getItem(key);
+            return value ? { value } : null;
+          } catch (e) {
+            console.error("Failed to read from localStorage", e);
+            return null;
+          }
+        },
+        set: async (key, value) => {
+          try {
+            localStorage.setItem(key, value);
+          } catch (e) {
+            console.error("Failed to write to localStorage", e);
+          }
+        }
+      };
+    }
+  </script>
+</head>
+<body class="bg-[#F7F4EC]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const STORAGE_KEY_CCA = "cca:responses:v1";
+
+    // ─────────────────────────────────────────────────────────────
+    // CCA & Comprehensive Child First Assessment — Section Model
+    // Field types: text | date | area | radio | check | select
+    // option.detail: "text" shows a follow-up line when picked/checked
+    // field.showIf: { field, equals } or { field, notEquals } or { field, includes }
+    // ─────────────────────────────────────────────────────────────
+    const YNU = [{ label: "Yes" }, { label: "No" }, { label: "Unknown" }];
+    const NONE_NA = "None / Not applicable";
+    const DELAY_OPTS = [
+      { label: "Met" },
+      { label: "Minor Delay", detail: "text", detailLabel: "Please explain" },
+      { label: "Major Delay", detail: "text", detailLabel: "Please explain" },
+      { label: "Not applicable" },
+    ];
+
+    const CCA_SECTIONS = [
+      // ─── 0. Child Information ───
+      {
+        id: "childinfo",
+        num: "i",
+        title: "Child Information",
+        blurb: "Basic identifiers for the child being assessed.",
+        fields: [
+          { id: "child_name", label: "Child Name", type: "text", req: true },
+          { id: "child_id", label: "Child CFCF ID", type: "text", req: true },
+          { id: "child_dob", label: "Child Date of Birth", type: "date", req: true },
+        ],
+      },
+
+      // ─── 1. Presenting Concerns & Risk/Protective Factors ───
+      {
+        id: "s1",
+        num: "1",
+        title: "Presenting Concerns & Risk and Protective Factors",
+        blurb: "Demographics, participants, caregiver concerns, and the risk / protective factor checklists.",
+        fields: [
+          { id: "s1_interval", label: "Assessment Interval", type: "radio", req: true,
+            options: [
+              { label: "Initial CCA", detail: "date", detailLabel: "Date Initial CCA Complete" },
+              { label: "Comprehensive CF Assessment (within 60 days)" },
+            ] },
+          { id: "s1_gender", label: "Gender", type: "text", group: "Demographic Information" },
+          { id: "s1_race", label: "Race", type: "text" },
+          { id: "s1_ethnicity", label: "Ethnicity", type: "text" },
+          { id: "s1_lang_primary", label: "Primary Language", type: "text" },
+          { id: "s1_lang_secondary", label: "Secondary Language", type: "text" },
+          { id: "s1_participants", label: "Participants involved in the assessment", type: "check", req: true,
+            options: [
+              { label: "Index Child" }, { label: "Birth Father" }, { label: "Birth Mother" },
+              { label: "Foster Mother" }, { label: "Foster Father" }, { label: "Step Mother" },
+              { label: "Step Father" }, { label: "Adoptive Mother" }, { label: "Adoptive Father" },
+              { label: "Female Relative (e.g. grandma, aunt)" }, { label: "Male Relative (e.g. grandpa, uncle)" },
+              { label: "Unrelated female adult" }, { label: "Unrelated male adult" },
+              { label: "Mother's live-in partner" }, { label: "Father's live-in partner" },
+              { label: "Other", detail: "text", detailLabel: "Please specify" },
+            ] },
+          { id: "s1_guardian_participated", label: "Did the child's Legal Guardian participate in the assessment?", type: "radio", req: true,
+            options: [{ label: "Yes" }, { label: "No" }] },
+          { id: "s1_guardian_name", label: "Legal Guardian's name", type: "text", req: true },
+          { id: "s1_main_concerns", label: "Caregiver(s) main concerns (check all that apply)", type: "check", req: true, group: "Presenting Problems / Symptoms",
+            options: [
+              { label: "Basic needs (e.g., housing, heat, food, TANF, SNAP, Medicaid)" },
+              { label: "Child behavioral/emotional concerns (Home)" },
+              { label: "Child behavioral/emotional concerns (School or child care)" },
+              { label: "Child developmental/educational concerns" },
+              { label: "Child exposure to domestic violence" },
+              { label: "Child exposure to community violence" },
+              { label: "Child abuse/neglect" },
+              { label: "Need for parenting education" },
+              { label: "Imminent risk of or recent out-of-home placement" },
+              { label: "Risk of or recent child expulsion from child care or school" },
+              { label: "Homelessness or risk of family eviction" },
+              { label: "Major child/family health concerns" },
+              { label: "Parent/caregiver mental health concerns" },
+              { label: "Parent/caregiver substance abuse" },
+              { label: "Parent/caregiver educational needs" },
+              { label: "Service coordination needs" },
+              { label: "Other", detail: "text", detailLabel: "Please specify" },
+            ] },
+          { id: "s1_risk_early", label: "Early Development", type: "check", req: true, group: "Risk Factors Checklist",
+            options: [
+              { label: "Premature birth or complications" }, { label: "Fetal drug/alcohol exposure" },
+              { label: "\"Difficult\" temperament" }, { label: "Long-term absence of caregiver in infancy" },
+              { label: "Poor infant attachment to mother" }, { label: "Shy temperament" },
+              { label: "Siblings within 2 years of child" }, { label: "Infant colic / Irritability" },
+              { label: "Disrupted attachment" }, { label: NONE_NA },
+            ] },
+          { id: "s1_risk_disorders", label: "Childhood Disorders", type: "check", req: true,
+            options: [
+              { label: "Chronic medical disorder" }, { label: "Neurological impairment" },
+              { label: "Developmental delays" }, { label: "Behavioral or emotional problems" },
+              { label: "ER visits" }, { label: "Hospitalization" }, { label: NONE_NA },
+            ] },
+          { id: "s1_risk_family_stress", label: "Family Stress", type: "check", req: true,
+            options: [
+              { label: "Family on public assistance or living in poverty" },
+              { label: "Separation/divorce/single parent" },
+              { label: "Large family — 5 or more children" },
+              { label: "Frequent family moves" },
+              { label: "Child protective services involvement" },
+              { label: "Homelessness" },
+              { label: "Hunger or food insecurity" },
+              { label: "Lack of friends or family support" },
+              { label: NONE_NA },
+            ] },
+          { id: "s1_risk_parental", label: "Parental Factors", type: "check", req: true,
+            options: [
+              { label: "Parent/caregiver with substance abuse" },
+              { label: "Parent/caregiver with mental disorders" },
+              { label: "Parent/caregiver with criminality" },
+              { label: "Caregiver depression" },
+              { label: "Caregiver cognitive limitations" },
+              { label: "Caregiver physical or health limitations" },
+              { label: "Caregiver history of trauma" },
+              { label: "Caregiver unemployment" },
+              { label: "Caregiver death/disappearance" },
+              { label: "Death or loss of an important person" },
+              { label: NONE_NA },
+            ] },
+          { id: "s1_risk_experiential", label: "Experiential", type: "check", req: true,
+            options: [
+              { label: "Witness to domestic violence" }, { label: "Witness to community violence" },
+              { label: "Removal of child from home" }, { label: "Substantiated neglect" },
+              { label: "Physical abuse" }, { label: "Sexual abuse" },
+              { label: "Negative relationship with parent(s)" }, { label: "Emotional abuse" },
+              { label: "Accidental trauma" }, { label: NONE_NA },
+            ] },
+          { id: "s1_risk_social_drift", label: "Social Drift", type: "check", req: true,
+            options: [
+              { label: "Social isolation (new immigrant)" },
+              { label: NONE_NA },
+            ] },
+          { id: "s1_prot_early", label: "Early Development", type: "check", req: true, group: "Protective Factors Checklist",
+            options: [
+              { label: "\"Easy\" temperament" }, { label: "Positive/secure attachment to mother" },
+              { label: "First born" }, { label: "Independence as a toddler" }, { label: NONE_NA },
+            ] },
+          { id: "s1_prot_home", label: "Family Home", type: "check", req: true,
+            options: [
+              { label: "Child lives at home" }, { label: "Parent(s) consistently employed" },
+              { label: "Parent(s) with high school education" }, { label: "Stable, high quality child care" },
+              { label: "Regular involvement in faith community" }, { label: "Predictable rules, routines at home" },
+              { label: "Positive relationship with primary caregiver" }, { label: "Involvement with two parents" },
+              { label: "Parental monitoring of child activity" }, { label: "Fairness in family discipline" },
+              { label: "Extended family" }, { label: NONE_NA },
+            ] },
+          { id: "s1_prot_competencies", label: "Child Competencies", type: "check", req: true,
+            options: [
+              { label: "Good reasoning/problem solving" }, { label: "Good student" },
+              { label: "Physical health" }, { label: "Social-emotional health and well-being" },
+              { label: NONE_NA },
+            ] },
+          { id: "s1_prot_social", label: "Child Social Skills", type: "check", req: true,
+            options: [
+              { label: "Gets along with other children" }, { label: "Gets along with adults outside of family" },
+              { label: "\"Likeable\" child" }, { label: "Sense of humor" }, { label: NONE_NA },
+            ] },
+          { id: "s1_prot_support", label: "Extra-Familial Social Support", type: "check", req: true,
+            options: [
+              { label: "Adult mentors outside family" }, { label: "Involvement in community groups" },
+              { label: "Support from someone at child care/school" }, { label: "Has extracurricular activities" },
+              { label: "Cultural ties" }, { label: NONE_NA },
+            ] },
+          { id: "s1_prot_outlook", label: "Outlooks and Attitudes", type: "check", req: true,
+            options: [
+              { label: "Child feels loved & cared for" }, { label: "Child goes to caregiver(s) for support" },
+              { label: NONE_NA },
+            ] },
+          { id: "s1_concerns_narrative", label: "Presenting Concerns Narrative", type: "area", req: true, rows: 6, group: "Presenting Concerns Summary",
+            hint: "Include concerns/events that have led caregiver to seek help; source of distress; caregiver's understanding of the problem (frequency, symptoms, severity, triggers, timing); beginning (precipitating event); worsening or improvement over time; strategies tried with outcomes; supports received; impact on family; why coming for help now; other related concerns; outcomes hoped to achieve and caregiver's expectations with regard to intervention." },
+          { id: "s1_goals_narrative", label: "Family's Goals for Treatment", type: "area", req: true, rows: 4,
+            hint: "Include whether or not the family or child chose services. Use parents'/caregivers' words and elaborate." },
+        ],
+      },
+      // ─── 2. Risk Assessment ───
+      {
+        id: "s2",
+        num: "2",
+        title: "Risk Assessment",
+        blurb: "Suicidal and homicidal ideation, history of harm, and current risk ratings.",
+        fields: [
+          { id: "s2_suicidal_ideation", label: "Is child having suicidal ideation or making suicidal threats (specific plan, means, intent)?", type: "radio", req: true,
+            options: [
+              { label: "Yes", detail: "area", detailLabel: "Please describe" },
+              { label: "No" }, { label: "Not developmentally appropriate" },
+            ] },
+          { id: "s2_homicidal_ideation", label: "Is child having homicidal ideation or making homicidal threats (specific plan, means, intent)?", type: "radio", req: true,
+            options: [
+              { label: "Yes", detail: "area", detailLabel: "Please describe" },
+              { label: "No" }, { label: "Not developmentally appropriate" },
+            ] },
+          { id: "s2_history_suicidal_homicidal", label: "Does the child have a history of suicidal or homicidal behavior?", type: "radio", req: true,
+            options: [
+              { label: "Yes", detail: "area", detailLabel: "Please describe" },
+              { label: "No" }, { label: "Not developmentally appropriate" },
+            ] },
+          { id: "s2_self_injurious", label: "Does the child have a history of self-injurious behavior? (e.g., severe head banging, biting, pulling hair, vomiting, burning, etc.)", type: "radio", req: true,
+            options: [
+              { label: "Yes", detail: "area", detailLabel: "Describe the behavior, when it began, how often, and last occurrence" },
+              { label: "No" }, { label: "Not developmentally appropriate" },
+            ] },
+          { id: "s2_suicidal_risk", label: "Suicidal Risk", type: "radio", req: true, group: "Current Risk Based on Assessment Information",
+            options: [
+              { label: "1. Imminent Risk" }, { label: "2. Moderate Risk" }, { label: "3. Low or no Risk" },
+            ] },
+          { id: "s2_suicidal_comments", label: "Comments regarding suicidal risk", type: "area", rows: 4,
+            hint: "Must be completed if anything other than low/no risk is checked.",
+            showIf: { field: "s2_suicidal_risk", notEquals: "3. Low or no Risk" } },
+          { id: "s2_homicidal_risk", label: "Homicidal Risk", type: "radio", req: true,
+            options: [
+              { label: "1. Imminent Risk" }, { label: "2. Moderate Risk" }, { label: "3. Low or no Risk" },
+            ] },
+          { id: "s2_homicidal_comments", label: "Comments regarding homicidal risk", type: "area", rows: 4,
+            hint: "Must be completed if anything other than low/no risk is checked.",
+            showIf: { field: "s2_homicidal_risk", notEquals: "3. Low or no Risk" } },
+        ],
+      },
+
+      // ─── 3. Observations and Mental Status ───
+      {
+        id: "s3",
+        num: "3",
+        title: "Observations and Mental Status",
+        blurb: "General appearance, development, regulation, and the mental status narrative.",
+        fields: [
+          { id: "s3_stature", label: "Physical Stature", type: "radio", req: true, group: "General Appearance",
+            options: [
+              { label: "Within normal limits" }, { label: "Overweight" }, { label: "Underweight" },
+              { label: "Appears shorter than stated age" }, { label: "Appears taller than stated age" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s3_hygiene", label: "Hygiene", type: "radio", req: true,
+            options: [{ label: "Good" }, { label: "Fair" }, { label: "Poor" }] },
+          { id: "s3_eye_contact", label: "Eye Contact", type: "radio", req: true,
+            options: [{ label: "Good" }, { label: "Fair" }, { label: "Poor" }] },
+          { id: "s3_apparent_age", label: "Apparent Age", type: "radio", req: true,
+            options: [{ label: "Appears older" }, { label: "Appears stated age" }, { label: "Appears younger" }] },
+          { id: "s3_dress", label: "Dress", type: "radio", req: true,
+            options: [{ label: "Well groomed" }, { label: "Disheveled" }, { label: "Appropriate for weather/environment" }] },
+          { id: "s3_appearance_comments", label: "General Appearance Comments", type: "area", rows: 3 },
+          { id: "s3_motor", label: "Motor Activity", type: "check", req: true, group: "Development",
+            options: [
+              { label: "Agitated" }, { label: "Calm" }, { label: "Hyperactive" },
+              { label: "Hypoactive / lethargic" }, { label: "Appears delayed" },
+              { label: "Tics" }, { label: "Tremors" }, { label: "Unsafe activity" },
+            ] },
+          { id: "s3_activity_comments", label: "Activity Comments", type: "area", rows: 3 },
+          { id: "s3_speech", label: "Speech", type: "check", req: true,
+            options: [
+              { label: "WNL" }, { label: "Clear" }, { label: "Loud" }, { label: "Soft" },
+              { label: "Paucity" }, { label: "Unintelligible" }, { label: "Non-responsive" },
+              { label: "Not applicable due to age" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s3_eating_sleeping", label: "Current eating and sleeping habits, including any recent changes", type: "area", req: true, rows: 4 },
+          { id: "s3_attitude", label: "Attitude (required for children 3 years of age and above)", type: "check", req: true, group: "Regulation",
+            options: [
+              { label: "Cooperative" }, { label: "Uncooperative" }, { label: "Relaxed" },
+              { label: "Casual" }, { label: "Attentive" }, { label: "Pleasant" },
+              { label: "Interested" }, { label: "Hostile" }, { label: "Defiant" },
+              { label: "Avoidant" }, { label: "Distracted" }, { label: "Aggressive" },
+              { label: "Dependent" }, { label: "Seductive" }, { label: "Not applicable — under 3 y.o." },
+            ] },
+          { id: "s3_attitude_comments", label: "Attitude Comments", type: "area", rows: 3 },
+          { id: "s3_mood", label: "Mood", type: "check", req: true,
+            options: [
+              { label: "Elated (silly)" }, { label: "Happy" }, { label: "Neutral" },
+              { label: "Irritable (crying)" }, { label: "Angry" }, { label: "Dysthymic / unhappy" },
+              { label: "Depressed" }, { label: "Anxious" }, { label: "Labile" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s3_affect", label: "Affect", type: "check", req: true,
+            options: [
+              { label: "Normal" }, { label: "Sad" }, { label: "Irritable" },
+              { label: "Hypervigilant" }, { label: "Angry" }, { label: "Anxious / fearful" },
+              { label: "Apathetic" }, { label: "Blunted/constricted" }, { label: "Bright" },
+              { label: "Flat" }, { label: "Labile" }, { label: "Mood Congruent" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s3_transitions", label: "Transitions", type: "check", req: true,
+            options: [
+              { label: "Normal response" }, { label: "Anxious" }, { label: "Disorganized" },
+              { label: "Uncooperative" }, { label: "Able to be calmed by parent/caregiver" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s3_attention", label: "Attention / Cooperation", type: "check", req: true,
+            options: [
+              { label: "Difficulties sustaining attention in tasks or play" },
+              { label: "Difficulties listening when spoken directly to" },
+              { label: "Difficulties following through on tasks" },
+              { label: "Dislikes tasks that require sustained mental effort" },
+              { label: "Often loses things" }, { label: "Easily distracted" },
+              { label: "Often forgetful in everyday tasks" },
+              { label: "Not applicable due to age" },
+            ] },
+          { id: "s3_hyperactivity", label: "Hyperactivity / Impulsivity", type: "check", req: true,
+            options: [
+              { label: "Unable to engage in play or leisure activities quietly" },
+              { label: "Often interrupts or intrudes on others" },
+              { label: "Often runs or climbs inappropriately" },
+              { label: "Excessive talking" },
+              { label: "Often leaves seat inappropriately" },
+              { label: "Often \"on the go\"" },
+              { label: "Difficulty waiting his/her turn" },
+              { label: "Often fidgets" },
+              { label: "Not applicable due to age" },
+            ] },
+          { id: "s3_narrative", label: "Observation & Mental Status Narrative", type: "area", req: true, rows: 6,
+            hint: "Include child's mood & affect in the context of relationship with caregiver. Note factors which precipitate change in child's presentation. Include child's ability to be attentive and regulated in relation to caregiver's efforts to soothe or redirect." },
+        ],
+      },
+      // ─── 4. Child Social-Emotional / Behavioral Health History ───
+      {
+        id: "s4",
+        num: "4",
+        title: "Child Social-Emotional / Behavioral Health History",
+        blurb: "Concerns, environments, past supports, and the functioning narrative.",
+        fields: [
+          { id: "s4_concerns_present", label: "Were/are there concerns about the child's emotional/behavioral health?", type: "radio", req: true,
+            options: [{ label: "Yes" }, { label: "No" }] },
+          { id: "s4_concern_types", label: "If yes, check all that apply", type: "check",
+            showIf: { field: "s4_concerns_present", equals: "Yes" },
+            options: [
+              { label: "Externalizing behaviors including aggression, hyperactivity, poor impulse control, defiance" },
+              { label: "Internalizing behaviors including sadness, anxiety, withdrawal" },
+              { label: "Difficulties with affect regulation, including self-regulation and/or caregiver's ability to soothe" },
+              { label: "Attachment behaviors including social referencing, secure base, sharing of pleasure" },
+              { label: "Sensory integration issues including hyper- and hypo-sensitivity to touch, proprioception, vestibular stimulation, sound, light" },
+              { label: "Prefers relationships with adults, strangers" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s4_environments", label: "Environments in which these emotional/behavioral problems are seen", type: "check",
+            options: [
+              { label: "Home" }, { label: "Daycare/School" }, { label: "Relative's home" },
+              { label: "Community (e.g., grocery store, playground, church)" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s4_severity_school", label: "Severity of the behavioral issue in the daycare/school setting", type: "radio", req: true,
+            showIf: { field: "s4_environments", includes: "Daycare/School" },
+            options: [{ label: "Mild" }, { label: "Moderate" }, { label: "Severe" }] },
+          { id: "s4_expulsion_risk", label: "Is the child at risk of suspension or expulsion from the daycare/school setting?", type: "radio", req: true,
+            showIf: { field: "s4_environments", includes: "Daycare/School" },
+            options: [{ label: "Yes" }, { label: "No" }] },
+          { id: "s4_expulsions", label: "How many times has the child been expelled from daycare/school settings in the past?", type: "radio", req: true,
+            options: [{ label: "1" }, { label: "2" }, { label: "3" }, { label: "4" }, { label: "5+" }] },
+          { id: "s4_past_support", label: "Was there a therapeutic, behavioral or parental support in the past?", type: "radio",
+            options: [
+              { label: "Yes", detail: "area", detailLabel: "Describe previous behavioral health treatment — evaluations, strategies attempted, medications prescribed, treatment and results" },
+              { label: "No" },
+            ] },
+          { id: "s4_narrative", label: "Child Social-Emotional Functioning Narrative", type: "area", req: true, rows: 6, group: "Narrative",
+            hint: "Include as relevant: description of any concerning behaviors (precipitants or triggers, frequency, severity, timing, setting); when did it begin; worsening or improvement over time; caregiver's understanding of the meaning of the behavior; caregiver response and effectiveness; past evaluations, strategies tried, treatment, results; impact on family." },
+        ],
+      },
+
+      // ─── 5. Caregiver-Child Relationship ───
+      {
+        id: "s5",
+        num: "5",
+        title: "Caregiver-Child Relationship",
+        blurb: "The relationship narrative.",
+        fields: [
+          { id: "s5_narrative", label: "Caregiver-Child Relationship Narrative", type: "area", req: true, rows: 8,
+            hint: "Include: caregiver's feelings and perceptions about pregnancy and child in early infancy. How did their relationship evolve, and what is it like now? Have there been separations? What activities do parent/caregiver and child enjoy most together? Describe interactions around play, learning, routines, discipline, etc., including emotional tone, quality of interaction, and nature of contact. What are the child's strengths or challenges? What relationship(s) are most important to the child? What are the Clinical Team's observations and understanding of the past/current child-parent/caregiver relationships?" },
+        ],
+      },
+
+      // ─── 6. Family History & Environmental ───
+      {
+        id: "s6",
+        num: "6",
+        title: "Family History & Environmental",
+        blurb: "Family identity, stressors and trauma, and family strengths.",
+        fields: [
+          { id: "s6_composition", label: "Family Composition", type: "area", req: true, rows: 5, group: "Family Identity",
+            hint: "Include who is in the family, ages, birth order; family dynamics re: roles, hierarchy, power flow." },
+          { id: "s6_cultural_identity", label: "How do individuals in the family identify culturally, racially, ethnically?", type: "area", req: true, rows: 4 },
+          { id: "s6_child_stressors", label: "Child stressors", type: "check", group: "Family Stressors and Trauma",
+            options: [
+              { label: "Physical abuse and extreme physical punishment" },
+              { label: "Sexual abuse" },
+              { label: "Emotional abuse" },
+              { label: "Neglect (inadequate food, lack of medical care, dirty clothing, lack of supervision)" },
+              { label: "Accidental trauma" },
+              { label: "Witness to domestic violence" },
+              { label: "Witness to community violence" },
+              { label: "Caregiver death/disappearance/abandonment/arrest" },
+              { label: "Death or loss of other important person (e.g. grandparent, sibling)" },
+              { label: "Disrupted attachment (multiple separations, loss of important caregiver)" },
+              { label: "Hospitalization" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s6_caregiver_stressors", label: "Caregiver and Family stressors", type: "check",
+            options: [
+              { label: "Domestic violence" },
+              { label: "Caregiver incarceration" },
+              { label: "Caregiver depression" },
+              { label: "Caregiver other mental illness" },
+              { label: "Caregiver alcohol abuse" },
+              { label: "Caregiver substance abuse" },
+              { label: "Homelessness / shelter / unstable housing" },
+              { label: "Caregiver cognitive limitations" },
+              { label: "Caregiver physical illness" },
+              { label: "Unemployment" },
+              { label: "Family poverty" },
+              { label: "Social isolation (new immigrant)" },
+              { label: "Child protective services involvement" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s6_dv_timing", label: "The domestic violence is:", type: "radio",
+            showIf: { field: "s6_caregiver_stressors", includes: "Domestic violence" },
+            options: [{ label: "Past" }, { label: "Current" }, { label: "Unknown" }] },
+          { id: "s6_dv_episodes", label: "How many episodes of violence have occurred when the child has been present (home or other setting)?", type: "radio",
+            showIf: { field: "s6_caregiver_stressors", includes: "Domestic violence" },
+            options: [{ label: "None" }, { label: "1–3" }, { label: "4–8" }, { label: "Greater than 8" }, { label: "Don't know" }] },
+          { id: "s6_stress_trauma_narrative", label: "Stress and Trauma Narrative", type: "area", req: true, rows: 6,
+            hint: "Include: description of the stressors and trauma in life of child and family (mental health, substance abuse, physical and emotional neglect and abuse, domestic violence, other trauma, relationships and attachment, separations, DSS and court involvement); include timing, chronic or acute. Relate child experience of stress and trauma to caregiver history of adversity. Include continuity, security and safety in environment." },
+          { id: "s6_strengths_current", label: "Child and Family Current Strengths", type: "check", group: "Family Strengths",
+            options: [
+              { label: "Caregiver support network (family, friends)" },
+              { label: "Involvement of birth father or other stable partner" },
+              { label: "Cultural ties" },
+              { label: "Involvement in religious community" },
+              { label: "Employment" },
+              { label: "Stable, high quality childcare" },
+              { label: "Physical health" },
+              { label: "Mental health and well-being" },
+              { label: "Child felt special or loved" },
+              { label: "Family is source of strength, support, protection" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s6_strengths_origin", label: "Caregiver Strengths in Family of Origin", type: "check",
+            options: [
+              { label: "Caregiver support network (family, friends)" },
+              { label: "Involvement of birth father or other stable partner" },
+              { label: "Cultural ties" },
+              { label: "Involvement in religious community" },
+              { label: "Employment" },
+              { label: "Stable, high quality childcare" },
+              { label: "Physical health" },
+              { label: "Mental health and well-being" },
+              { label: "Child felt special or loved" },
+              { label: "Family is source of strength, support, protection" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s6_strengths_narrative", label: "Family Strengths Narrative", type: "area", req: true, rows: 5,
+            hint: "Include: description of the family strengths. Include continuity, security and safety in environment." },
+        ],
+      },
+      // ─── 7. Developmental History ───
+      {
+        id: "s7",
+        num: "7",
+        title: "Developmental History",
+        blurb: "Maternal and birth history, pregnancy, and developmental milestones.",
+        fields: [
+          { id: "s7_maternal_birth_history", label: "Maternal Birth History", type: "area", req: true, rows: 4,
+            hint: "Please note any significant events such as number of previous births, complications, and maternal history of fetal loss." },
+          { id: "s7_prenatal_care", label: "When did the birth mother begin to receive prenatal care during pregnancy with the index child?", type: "radio",
+            options: [{ label: "1st trimester" }, { label: "2nd trimester" }, { label: "3rd trimester" }, { label: "No prenatal care" }] },
+          { id: "s7_prenatal_alcohol", label: "Prenatal alcohol use?", type: "radio", options: YNU },
+          { id: "s7_prenatal_substance", label: "Prenatal substance abuse?", type: "radio", options: YNU },
+          { id: "s7_prenatal_smoking", label: "Prenatal cigarette smoking?", type: "radio", options: YNU },
+          { id: "s7_maternal_illness", label: "Maternal illness during pregnancy?", type: "radio", options: YNU },
+          { id: "s7_prenatal_narrative", label: "Prenatal History", type: "area", req: true, rows: 4,
+            hint: "Please note prenatal history including, but not limited to, medical care mother received and concerns noted prenatally." },
+          { id: "s7_premature", label: "Was the child born premature? (less than 37 weeks gestation)", type: "radio", options: YNU },
+          { id: "s7_birth_weight", label: "Birth weight (lbs.)", type: "radio",
+            options: [
+              { label: "Less than 3.2 lbs." },
+              { label: "Equal or between 3.2 and 5.5 lbs." },
+              { label: "Greater than 5.5 lbs." },
+            ] },
+          { id: "s7_pregnancy_birth_narrative", label: "Pregnancy and Birth Narrative", type: "area", req: true, rows: 5,
+            hint: "Please describe any significant events that occurred including, but not limited to, preterm birth, concerns related to birth weight (low birth weight or small for gestational age), medical intervention and stays in the NICU, and history of breastfeeding." },
+          { id: "s7_ms_sat_alone", label: "Sat Alone (WNL: 6–9 months)", type: "radio", req: true, group: "Developmental Milestones", options: DELAY_OPTS },
+          { id: "s7_ms_walked_alone", label: "Walked Alone (WNL: 12–15 months)", type: "radio", req: true, options: DELAY_OPTS },
+          { id: "s7_ms_single_words", label: "Used single words (WNL: 12–15 months)", type: "radio", req: true, options: DELAY_OPTS },
+          { id: "s7_ms_sentences", label: "Used sentences (WNL: 15–18 months for 2-word sentences)", type: "radio", req: true, options: DELAY_OPTS },
+          { id: "s7_ms_toilet_day", label: "Toilet Training — day (WNL: approx. 2–3 years)", type: "radio", req: true, options: DELAY_OPTS },
+          { id: "s7_ms_toilet_night", label: "Toilet Training — night (WNL: approx. 2–3.5 years)", type: "radio", req: true, options: DELAY_OPTS },
+          { id: "s7_dev_summary", label: "Developmental Summary", type: "area", req: true, rows: 6,
+            hint: "Describe relevant developmental history, including stages of development: infancy, toddlerhood, preschool; sleep; feeding; separations; toileting; milestones appropriately met — especially language/speech/hearing/visual functioning; childcare history and response to changes, suspensions and expulsions; routines; family life; changes in caregivers and responses. Include strengths and weaknesses, as well as any risks identified above." },
+        ],
+      },
+
+      // ─── 8. Child Health & Medical History ───
+      {
+        id: "s8",
+        num: "8",
+        title: "Child Health & Medical History",
+        blurb: "Medical home, health conditions, well-care, and child welfare history.",
+        fields: [
+          { id: "s8_usual_care", label: "Where does the caregiver usually take the child for regular medical care?", type: "radio", req: true,
+            options: [
+              { label: "Doctor's / Nurse practitioner's office" },
+              { label: "Hospital Emergency Room" },
+              { label: "Hospital Outpatient" },
+              { label: "Federally Qualified Health Center" },
+              { label: "Retail Store or Minute Clinic" },
+              { label: "None" },
+              { label: "Unknown / Did not report" },
+              { label: "Other" },
+            ] },
+          { id: "s8_usual_care_detail", label: "Name, Location & Phone of medical provider", type: "area", req: true, rows: 2 },
+          { id: "s8_records_requested", label: "Have medical records been requested?", type: "radio",
+            options: [{ label: "Yes" }, { label: "No" }] },
+          { id: "s8_conditions", label: "Check all that are present or have relevant history", type: "check", req: true,
+            options: [
+              { label: "None" }, { label: "Allergies" }, { label: "Anemia" }, { label: "Asthma" },
+              { label: "Ear Infections" }, { label: "Hearing problems" }, { label: "Injuries" },
+              { label: "Meningitis" }, { label: "Nutrition / Eating problems" }, { label: "Obesity" },
+              { label: "Seizures" }, { label: "Stomachaches" }, { label: "Surgery" },
+              { label: "Vision problems" },
+              { label: "Other", detail: "text", detailLabel: "Please describe" },
+            ] },
+          { id: "s8_conditions_detail", label: "If you have made a selection, please describe", type: "area", rows: 3,
+            showIf: { field: "s8_conditions", hasAny: true } },
+          { id: "s8_wellcare", label: "Child's well-care status", type: "check", req: true,
+            options: [
+              { label: "Has a regular dental provider" },
+              { label: "Has had a hearing evaluation" },
+              { label: "Has had a dental check-up" },
+              { label: "Healthy current weight" },
+              { label: "Has opportunity for regular physical activity" },
+              { label: "Attends regular well-visits" },
+              { label: "Up-to-date immunizations" },
+            ] },
+          { id: "s8_lead_testing", label: "Has the child had lead testing?", type: "radio", req: true,
+            options: [{ label: "Yes" }, { label: "No" }] },
+          { id: "s8_lead_elevated", label: "If yes, were the lead levels elevated?", type: "radio", req: true,
+            showIf: { field: "s8_lead_testing", equals: "Yes" },
+            options: [{ label: "Yes" }, { label: "No" }] },
+          { id: "s8_er_visits", label: "Number of ER visits in the past year", type: "select", req: true,
+            options: ["0","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20+"] },
+          { id: "s8_hospitalizations", label: "Number of overnight hospitalizations (not including ER visits) in the past year", type: "select", req: true,
+            options: ["0","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20+"] },
+          { id: "s8_health_narrative", label: "Child and relevant family health history narrative", type: "area", req: true, rows: 6,
+            hint: "Describe child health problems and impact on child development or mental health as well as parental concerns around health issues. These may include, but not be limited to, significant medical concerns such as asthma, anemia, allergies, vision problems, seizures, surgeries, obesity, exposure to environmental toxins, & concerns related to dental care. Also include relevant family health factors; possible genetic risks." },
+          { id: "s8_cw_status", label: "Child's involvement with the child welfare system in his/her lifetime", type: "radio", req: true, group: "Child Welfare History",
+            options: [
+              { label: "Current" }, { label: "Past Only" }, { label: "Never involved" }, { label: "Unknown" },
+            ] },
+          { id: "s8_cw_investigations", label: "Number of investigations or assessments", type: "select",
+            showIf: { field: "s8_cw_status", inList: ["Current", "Past Only"] },
+            options: ["0","1","2","3","4","5","6","7","8","9","10+"] },
+          { id: "s8_cw_substantiations", label: "Number of substantiations", type: "select",
+            showIf: { field: "s8_cw_status", inList: ["Current", "Past Only"] },
+            options: ["0","1","2","3","4","5","6","7","8","9","10+"] },
+          { id: "s8_cw_placements", label: "Number of foster care placements", type: "select",
+            showIf: { field: "s8_cw_status", inList: ["Current", "Past Only"] },
+            options: ["0","1","2","3","4","5","6","7","8","9","10+"] },
+          { id: "s8_cw_narrative", label: "Child Welfare Narrative", type: "area", req: true, rows: 5 },
+        ],
+      },
+
+      // ─── 9. Clinical Formulation ───
+      {
+        id: "s9",
+        num: "9",
+        title: "Clinical Formulation",
+        blurb: "The integrated clinical picture and rationale.",
+        fields: [
+          { id: "s9_formulation", label: "Clinical Formulation", type: "area", req: true, rows: 10,
+            hint: "Describe the reasons for referral, child's current symptoms, and family's current functioning. Review relevant elements of the child's and caregiver's history as well as the relationship history (this may include attachment styles, history of separations, observations of interactions), and link current symptoms to history and prior experiences. Finally, present clinical and care coordination recommendations, prognosis for treatment, and rationale for diagnosis. Complete the child's DSM-5 diagnosis in the diagnostic module." },
+        ],
+      },
+
+      // ─── 10. Treatment Recommendations ───
+      {
+        id: "s10",
+        num: "10",
+        title: "Treatment Recommendations",
+        blurb: "Recommended intervention, treatment themes, services, and signatures.",
+        fields: [
+          { id: "s10_cf_recommended", label: "Is Child First the recommended intervention for this family at this time?", type: "radio", req: true,
+            options: [{ label: "Yes" }, { label: "No" }] },
+          { id: "s10_themes", label: "Child First Treatment Themes", type: "check",
+            options: [
+              { label: "I. Develop Empathic Relationship with Family Members" },
+              { label: "II. Enhance Safety" },
+              { label: "II-a. Physical Safety", indent: true },
+              { label: "II-b. Safety and Consistency in Treatment", indent: true },
+              { label: "II-c. Safety within Caregiver-Child Relationships", indent: true },
+              { label: "II-d. Stabilization", indent: true },
+              { label: "III. Strengthen Family Relationships: Promote Emotional Reciprocity" },
+              { label: "IV. Coordinate Care/Address Family Service Needs" },
+              { label: "V. Strengthen Dyadic Affect Regulation Capacities" },
+              { label: "VI. Strengthen Dyadic Body-Based Regulation Capacities" },
+              { label: "VII. Enhance Understanding of the Meaning of Behavior" },
+              { label: "VIII. Enhance Understanding of the Attachment-Exploration Balance & Heal Relationship Disruptions" },
+              { label: "IX. Address the Impact of Trauma" },
+            ] },
+          { id: "s10_skills", label: "Skills/services needed/wanted (related Child First Treatment Theme)", type: "check", req: true,
+            options: [
+              { label: "Educational/Vocational (IV)" },
+              { label: "Emotional Regulation (II, V, IX)" },
+              { label: "Financial/Housing (II, IV)" },
+              { label: "Impulse/Anger Management (V, VI)" },
+              { label: "Organizational (II, IV)" },
+              { label: "Parenting (I, III, VII, VIII, IX)" },
+              { label: "Social/Communication (I, III, VII)" },
+              { label: "Other services recommended for the family" },
+            ] },
+          { id: "s10_other_services", label: "Other services recommended for the family", type: "area", req: true, rows: 3 },
+          { id: "s10_recommendations", label: "Treatment Recommendations", type: "area", req: true, rows: 5,
+            hint: "Include additional assessments, services, support, or treatment based on the results of the assessment." },
+          { id: "s10_discussion", label: "Discussion of evaluation and treatment recommendations with participants", type: "area", rows: 4,
+            hint: "Include best days/times for appointments." },
+          { id: "s10_preferences", label: "Are there racial/cultural/religious/gender-specific preferences for treatment clinician?", type: "radio",
+            options: [
+              { label: "Yes", detail: "text", detailLabel: "Please describe" },
+              { label: "No" },
+            ] },
+          { id: "s10_sig_clinician", label: "Signature — Clinician", type: "text", group: "Signatures" },
+          { id: "s10_sig_clinician_date", label: "Date", type: "date" },
+          { id: "s10_sig_frp", label: "Signature — Family Resource Partner", type: "text" },
+          { id: "s10_sig_frp_date", label: "Date", type: "date" },
+          { id: "s10_sig_supervisor", label: "Signature — Supervisor", type: "text" },
+          { id: "s10_sig_supervisor_date", label: "Date", type: "date" },
+        ],
+      },
+    ];
+
+    // ─────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────
+    function isVisible(field, answers) {
+      if (!field.showIf) return true;
+      const cond = field.showIf;
+      const v = answers[cond.field];
+      if (cond.equals !== undefined) return v === cond.equals;
+      if (cond.notEquals !== undefined) return v !== undefined && v !== cond.notEquals;
+      if (cond.includes !== undefined) return Array.isArray(v) && v.includes(cond.includes);
+      if (cond.inList !== undefined) return cond.inList.includes(v);
+      if (cond.hasAny) return Array.isArray(v) && v.length > 0 && !v.includes("None");
+      return true;
+    }
+
+    function isAnswered(field, answers) {
+      const v = answers[field.id];
+      if (field.type === "check") return Array.isArray(v) && v.length > 0;
+      if (field.type === "area" || field.type === "text") return typeof v === "string" && v.trim().length > 0;
+      return v !== undefined && v !== null && v !== "";
+    }
+
+    function formatAnswer(field, answers) {
+      const v = answers[field.id];
+      if (v === undefined || v === null || v === "") return null;
+      if (field.type === "check") {
+        if (!Array.isArray(v) || v.length === 0) return null;
+        const parts = v.map((label) => {
+          const d = answers[field.id + "::" + label];
+          return d && d.trim() ? label + " — " + d.trim() : label;
+        });
+        return parts.join("; ");
+      }
+      if (field.type === "radio") {
+        const opt = (field.options || []).find((o) => o.label === v);
+        const d = answers[field.id + "::" + v];
+        if (opt && opt.detail && d && d.trim()) return v + " — " + d.trim();
+        return v;
+      }
+      return String(v);
+    }
+
+    function summaryText(answers) {
+      const lines = [
+        "CCA & COMPREHENSIVE CHILD FIRST ASSESSMENT",
+        "Completed: " + new Date().toLocaleString(),
+        "",
+      ];
+      CCA_SECTIONS.forEach((sec) => {
+        const visible = sec.fields.filter((f) => isVisible(f, answers));
+        const answered = visible.filter((f) => formatAnswer(f, answers) !== null);
+        if (answered.length === 0) return;
+        lines.push("=".repeat(60));
+        lines.push(sec.num === "i" ? "CHILD INFORMATION" : ("SECTION " + sec.num + ". " + sec.title.toUpperCase()));
+        lines.push("=".repeat(60));
+        let lastGroup = null;
+        visible.forEach((f) => {
+          const a = formatAnswer(f, answers);
+          if (a === null) return;
+          if (f.group && f.group !== lastGroup) {
+            lines.push("");
+            lines.push("[" + f.group + "]");
+            lastGroup = f.group;
+          }
+          lines.push("");
+          lines.push(f.label.replace(/\*$/, "").trim());
+          lines.push("  " + a);
+        });
+        lines.push("");
+      });
+      return lines.join("\n");
+    }
+
+    const Eyebrow = ({ children, dark }) => (
+      <div
+        className="cib-body text-xs font-bold uppercase tracking-widest mb-2"
+        style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}
+      >
+        {children}
+      </div>
+    );
+
+    const Req = () => <span style={{ color: "var(--lamplight)" }} title="Required in CFCR"> *</span>;
+
+    // ─────────────────────────────────────────────────────────────
+    // Title card shown at the start of the assessment: one sentence
+    // on what this covers and why, before the first question.
+    // ─────────────────────────────────────────────────────────────
+    function AssessmentIntro({ eyebrow, title, subtitle, purpose, meta, accent, beginLabel, backLabel, onBegin, onBack }) {
+      return (
+        <div className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+          <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 flex flex-col flex-1">
+
+            <button
+              onClick={onBack}
+              className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white"
+              style={{ color: "var(--soft-on-dark)" }}
+            >
+              &larr; {backLabel || "Back"}
+            </button>
+
+            <div className="flex-1 flex flex-col justify-center py-10 cib-fade">
+              <div className="rounded-3xl p-7" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                {eyebrow ? (
+                  <div className="cib-body text-xs font-bold uppercase tracking-widest mb-3" style={{ color: accent || "var(--lamplight)", letterSpacing: "0.14em" }}>
+                    {eyebrow}
+                  </div>
+                ) : null}
+                <h1 className="cib-display text-3xl leading-tight mb-2" style={{ color: "var(--cream-on-dark)" }}>
+                  {title}
+                </h1>
+                {subtitle ? (
+                  <p className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{subtitle}</p>
+                ) : null}
+
+                <div className="h-px w-full my-5" style={{ background: "rgba(255,255,255,0.14)" }} />
+
+                <p className="text-base leading-relaxed" style={{ color: "var(--cream-on-dark)" }}>
+                  {purpose}
+                </p>
+
+                {Array.isArray(meta) && meta.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-6">
+                    {meta.map((m) => (
+                      <span key={m} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.09)", color: "var(--soft-on-dark)" }}>
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={onBegin}
+              className="w-full rounded-2xl py-4 text-lg font-bold transition-transform active:scale-[0.98]"
+              style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}
+            >
+              {beginLabel || "Begin"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Field renderer (dark fill mode)
+    // ─────────────────────────────────────────────────────────────
+    function FieldView({ field, answers, setField, setDetail }) {
+      const value = answers[field.id];
+
+      const labelBlock = (
+        <div className="mb-3">
+          <div className="text-base font-bold leading-snug" style={{ color: "var(--cream-on-dark)" }}>
+            {field.label}{field.req ? <Req /> : null}
+          </div>
+          {field.hint && (
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: "var(--soft-on-dark)" }}>{field.hint}</p>
+          )}
+        </div>
+      );
+
+      if (field.type === "text" || field.type === "date") {
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <input
+              type={field.type}
+              value={typeof value === "string" ? value : ""}
+              onChange={(e) => setField(field.id, e.target.value)}
+              className="w-full rounded-2xl px-4 py-3 text-base focus:outline-none"
+              style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)", colorScheme: "dark" }}
+            />
+          </div>
+        );
+      }
+
+      if (field.type === "select") {
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <select
+              value={typeof value === "string" ? value : ""}
+              onChange={(e) => setField(field.id, e.target.value)}
+              className="w-full rounded-2xl px-4 py-3 text-base focus:outline-none"
+              style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)", colorScheme: "dark" }}
+            >
+              <option value="">Select…</option>
+              {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+        );
+      }
+
+      if (field.type === "area") {
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <textarea
+              value={typeof value === "string" ? value : ""}
+              onChange={(e) => setField(field.id, e.target.value)}
+              rows={field.rows || 4}
+              placeholder="Type here…"
+              className="w-full rounded-2xl p-4 text-base resize-y focus:outline-none"
+              style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}
+            />
+          </div>
+        );
+      }
+
+      if (field.type === "radio") {
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <div className="flex flex-col gap-2">
+              {field.options.map((opt) => {
+                const selected = value === opt.label;
+                return (
+                  <div key={opt.label}>
+                    <button
+                      onClick={() => setField(field.id, opt.label)}
+                      className="w-full rounded-2xl py-3 px-4 text-left text-sm font-bold transition-all active:scale-[0.99]"
+                      style={selected
+                        ? { background: "var(--lamplight)", color: "var(--spruce-deep)", boxShadow: "0 0 0 3px rgba(242,182,83,0.35)" }
+                        : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}
+                    >
+                      {opt.label}
+                    </button>
+                    {selected && opt.detail === "text" && (
+                      <input
+                        value={answers[field.id + "::" + opt.label] || ""}
+                        onChange={(e) => setDetail(field.id, opt.label, e.target.value)}
+                        placeholder={opt.detailLabel || "Please describe"}
+                        className="w-full rounded-2xl px-4 py-3 mt-2 text-sm focus:outline-none"
+                        style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(242,182,83,0.5)" }}
+                      />
+                    )}
+                    {selected && opt.detail === "date" && (
+                      <input
+                        type="date"
+                        value={answers[field.id + "::" + opt.label] || ""}
+                        onChange={(e) => setDetail(field.id, opt.label, e.target.value)}
+                        aria-label={opt.detailLabel || "Date"}
+                        className="w-full rounded-2xl px-4 py-3 mt-2 text-sm focus:outline-none"
+                        style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(242,182,83,0.5)", colorScheme: "dark" }}
+                      />
+                    )}
+                    {selected && opt.detail === "area" && (
+                      <textarea
+                        value={answers[field.id + "::" + opt.label] || ""}
+                        onChange={(e) => setDetail(field.id, opt.label, e.target.value)}
+                        placeholder={opt.detailLabel || "Please describe"}
+                        rows={3}
+                        className="w-full rounded-2xl p-4 mt-2 text-sm resize-y focus:outline-none"
+                        style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(242,182,83,0.5)" }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
+      if (field.type === "check") {
+        const arr = Array.isArray(value) ? value : [];
+        const toggle = (label) => {
+          if (arr.includes(label)) setField(field.id, arr.filter((x) => x !== label));
+          else setField(field.id, [...arr, label]);
+        };
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <div className="flex flex-col gap-2">
+              {field.options.map((opt) => {
+                const checked = arr.includes(opt.label);
+                return (
+                  <div key={opt.label}>
+                    <button
+                      onClick={() => toggle(opt.label)}
+                      className="w-full rounded-2xl py-3 px-4 text-left text-sm font-bold transition-all active:scale-[0.99] flex items-start gap-3"
+                      style={{
+                        ...(checked
+                          ? { background: "var(--moss)", color: "var(--spruce-deep)" }
+                          : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }),
+                        ...(opt.indent ? { marginLeft: "1.5rem", width: "calc(100% - 1.5rem)" } : {}),
+                      }}
+                    >
+                      <span className="flex-shrink-0 w-5 h-5 rounded-md mt-0.5 flex items-center justify-center text-xs"
+                        style={checked
+                          ? { background: "var(--spruce-deep)", color: "var(--lamplight)" }
+                          : { border: "2px solid rgba(255,255,255,0.35)", color: "transparent" }}
+                      >✓</span>
+                      <span>{opt.label}</span>
+                    </button>
+                    {checked && opt.detail === "text" && (
+                      <input
+                        value={answers[field.id + "::" + opt.label] || ""}
+                        onChange={(e) => setDetail(field.id, opt.label, e.target.value)}
+                        placeholder={opt.detailLabel || "Please specify"}
+                        className="w-full rounded-2xl px-4 py-3 mt-2 text-sm focus:outline-none"
+                        style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(127,160,140,0.6)", marginLeft: opt.indent ? "1.5rem" : 0, width: opt.indent ? "calc(100% - 1.5rem)" : "100%" }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Main App
+    // ─────────────────────────────────────────────────────────────
+    function App() {
+      const [mode, setMode] = useState("home"); // home | intro | fill | done
+      const [answers, setAnswers] = useState({});
+      const [secIdx, setSecIdx] = useState(0);
+      const [saveState, setSaveState] = useState("idle");
+      const [copied, setCopied] = useState(false);
+      const [confirmClear, setConfirmClear] = useState(false);
+      const loadedRef = useRef(false);
+      const topRef = useRef(null);
+
+      // Load saved answers
+      useEffect(() => {
+        let alive = true;
+        (async () => {
+          try {
+            if (!window.storage) {
+              if (alive) setSaveState("off");
+              loadedRef.current = true;
+              return;
+            }
+            const result = await window.storage.get(STORAGE_KEY_CCA);
+            if (alive && result && result.value) {
+              const parsed = JSON.parse(result.value);
+              if (parsed && typeof parsed === "object") setAnswers(parsed);
+            }
+          } catch (e) {
+            // ignore
+          } finally {
+            loadedRef.current = true;
+          }
+        })();
+        return () => { alive = false; };
+      }, []);
+
+      // Autosave answers
+      useEffect(() => {
+        if (!loadedRef.current) return;
+        let cancelled = false;
+        const t = setTimeout(async () => {
+          try {
+            if (!window.storage) return;
+            await window.storage.set(STORAGE_KEY_CCA, JSON.stringify(answers));
+            if (!cancelled) {
+              setSaveState("saved");
+              setTimeout(() => { if (!cancelled) setSaveState("idle"); }, 1500);
+            }
+          } catch (e) {
+            if (!cancelled) setSaveState("off");
+          }
+        }, 600);
+        return () => { cancelled = true; clearTimeout(t); };
+      }, [answers]);
+
+      const setField = (id, v) => setAnswers((a) => ({ ...a, [id]: v }));
+      const setDetail = (id, label, v) => setAnswers((a) => ({ ...a, [id + "::" + label]: v }));
+
+      const answeredAny = Object.keys(answers).length > 0;
+      const totalRequired = CCA_SECTIONS.reduce((n, sec) => n + sec.fields.filter((f) => f.req).length, 0);
+
+      const section = CCA_SECTIONS[secIdx];
+      const visibleFields = section ? section.fields.filter((f) => isVisible(f, answers)) : [];
+      const progress = ((secIdx + 1) / CCA_SECTIONS.length) * 100;
+
+      const sectionCompletion = (sec) => {
+        const vis = sec.fields.filter((f) => isVisible(f, answers) && f.req);
+        if (vis.length === 0) return 1;
+        const done = vis.filter((f) => isAnswered(f, answers)).length;
+        return done / vis.length;
+      };
+
+      const scrollTop = () => {
+        if (topRef.current && topRef.current.scrollIntoView) {
+          topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          window.scrollTo(0, 0);
+        }
+      };
+
+      const goNext = () => {
+        if (secIdx + 1 >= CCA_SECTIONS.length) {
+          setMode("done");
+        } else {
+          setSecIdx(secIdx + 1);
+        }
+        scrollTop();
+      };
+      const goBack = () => {
+        if (secIdx === 0) setMode("intro");
+        else setSecIdx(secIdx - 1);
+        scrollTop();
+      };
+
+      const clearAll = () => {
+        if (!confirmClear) {
+          setConfirmClear(true);
+          setTimeout(() => setConfirmClear(false), 3000);
+          return;
+        }
+        setConfirmClear(false);
+        setAnswers({});
+        setSecIdx(0);
+        setMode("home");
+      };
+
+      const copySummary = async () => {
+        const text = summaryText(answers);
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+        } catch (e) {
+          try {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            setCopied(true);
+          } catch (err) {
+            setCopied(false);
+          }
+        }
+        setTimeout(() => setCopied(false), 2000);
+      };
+
+      // ─── HOME ───
+      if (mode === "home") {
+        return (
+          <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+            <div className="max-w-md mx-auto px-5 py-10 pb-32">
+
+              <a href="index.html" className="inline-block text-xs font-bold uppercase tracking-wider mb-6 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
+                &larr; Back to Assessment Recorders
+              </a>
+
+              <Eyebrow>Child First Clinical Record</Eyebrow>
+              <h1 className="cib-display text-3xl leading-tight mb-2" style={{ color: "var(--spruce)" }}>
+                CCA &amp; Comprehensive Child First Assessment
+              </h1>
+              <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
+                A phone-first digital version of the paper assessment. Work section by section —
+                everything autosaves on this device so you can stop and come back.
+                {saveState === "saved" && <span style={{ color: "var(--moss)" }}> Saved.</span>}
+                {saveState === "off" && <span> Saving is off here.</span>}
+              </p>
+
+              <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                <Eyebrow>Before you begin</Eyebrow>
+                <p className="text-xs mb-2" style={{ color: "var(--ink-soft)" }}>
+                  Fields marked <span style={{ color: "var(--lamplight-deep)" }}>*</span> are always
+                  required in CFCR. Additional fields may be required based on data entry. Answers
+                  live only in this browser — copy the completed summary into the clinical record
+                  when finished.
+                </p>
+                <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
+                  <strong>{CCA_SECTIONS.length - 1} sections</strong> plus child information · {totalRequired} required fields.
+                </p>
+              </div>
+
+              <Eyebrow>Sections</Eyebrow>
+              <div className="flex flex-col gap-2 mb-8">
+                {CCA_SECTIONS.map((sec, i) => {
+                  const c = sectionCompletion(sec);
+                  return (
+                    <button
+                      key={sec.id}
+                      onClick={() => { setSecIdx(i); setMode("fill"); }}
+                      className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.99] hover:border-[#7FA08C]"
+                      style={{ background: "var(--card)", border: "1px solid var(--mist)" }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="cib-display text-lg w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: c >= 1 ? "var(--moss)" : "var(--mist)", color: c >= 1 ? "var(--spruce-deep)" : "var(--spruce)" }}>
+                            {sec.num}
+                          </span>
+                          <div>
+                            <div className="font-bold text-sm" style={{ color: "var(--spruce)" }}>{sec.title}</div>
+                            <div className="text-xs" style={{ color: "var(--ink-soft)" }}>{sec.blurb}</div>
+                          </div>
+                        </div>
+                        {c >= 1
+                          ? <span className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>✓</span>
+                          : c > 0
+                            ? <span className="text-xs font-bold flex-shrink-0" style={{ color: "var(--lamplight-deep)" }}>{Math.round(c * 100)}%</span>
+                            : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setSecIdx(0); setMode("intro"); }}
+                  className="flex-1 rounded-2xl py-4 text-base font-bold transition-transform active:scale-[0.98]"
+                  style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}
+                >
+                  {answeredAny ? "Resume" : "Start"} assessment
+                </button>
+                {answeredAny && (
+                  <button
+                    onClick={() => setMode("done")}
+                    className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-[#FAF8F5]"
+                    style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}
+                  >
+                    Review &amp; copy
+                  </button>
+                )}
+              </div>
+              {answeredAny && (
+                <button onClick={clearAll} className="w-full py-3 mt-2 text-sm transition-colors" style={{ color: confirmClear ? "var(--alert)" : "var(--ink-soft)" }}>
+                  {confirmClear ? "Tap again to erase all answers" : "Clear all answers"}
+                </button>
+              )}
+
+              <div className="text-center text-xs mt-8 pt-6" style={{ color: "var(--ink-soft)", borderTop: "1px solid var(--mist)" }}>
+                <p>
+                  Digital recording convenience only. Clinical interpretation and CFCR data entry
+                  remain the responsibility of the assessing clinician.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ─── INTRO / TITLE CARD ───
+      if (mode === "intro") {
+        return (
+          <AssessmentIntro
+            eyebrow="Child First Clinical Record"
+            title="CCA &amp; Comprehensive Child First Assessment"
+            subtitle="Comprehensive Clinical Assessment"
+            purpose="This assessment gathers the full Child First clinical picture in one pass — risk and protective factors, mental status, developmental and health history, formulation, and treatment recommendations — so that the record, the formulation, and the treatment plan all rest on the same evidence."
+            meta={[(CCA_SECTIONS.length - 1) + " sections plus child information", totalRequired + " required fields", "Autosaves on this device"]}
+            accent="var(--lamplight)"
+            beginLabel={answeredAny ? "Continue" : "Begin"}
+            backLabel="Back to sections"
+            onBegin={() => setMode("fill")}
+            onBack={() => setMode("home")}
+          />
+        );
+      }
+
+      // ─── FILL (section wizard, dark) ───
+      if (mode === "fill") {
+        let lastGroup = null;
+        return (
+          <div ref={topRef} className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+            <div className="max-w-md mx-auto w-full px-5 pt-6 pb-10 flex flex-col flex-1">
+              <div className="mb-6">
+                <div className="flex justify-between items-baseline mb-2">
+                  <button onClick={() => setMode("home")} className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--soft-on-dark)" }}>
+                    &larr; Sections
+                  </button>
+                  <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}>
+                    {section.num === "i" ? "Info" : "Section " + section.num} · {secIdx + 1} of {CCA_SECTIONS.length}
+                    {saveState === "saved" && <span style={{ color: "var(--moss)" }}> · Saved</span>}
+                  </span>
+                </div>
+                <div className="h-1 rounded-full w-full" style={{ background: "rgba(255,255,255,0.12)" }}>
+                  <div className="h-1 rounded-full" style={{ width: progress + "%", background: "var(--lamplight)", transition: "width 300ms ease" }} />
+                </div>
+              </div>
+
+              <div key={section.id} className="cib-fade flex-1">
+                <Eyebrow dark>{section.num === "i" ? "Child Information" : "Section " + section.num}</Eyebrow>
+                <h1 className="cib-display text-2xl leading-snug mb-2" style={{ color: "var(--cream-on-dark)" }}>
+                  {section.title}
+                </h1>
+                <p className="text-sm mb-8" style={{ color: "var(--soft-on-dark)" }}>{section.blurb}</p>
+
+                {visibleFields.map((f) => {
+                  const showGroup = f.group && f.group !== lastGroup;
+                  if (f.group) lastGroup = f.group;
+                  return (
+                    <React.Fragment key={f.id}>
+                      {showGroup && (
+                        <div className="mt-2 mb-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.14)" }}>
+                          <Eyebrow dark>{f.group}</Eyebrow>
+                        </div>
+                      )}
+                      <FieldView field={f} answers={answers} setField={setField} setDetail={setDetail} />
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-3 mt-4">
+                <button onClick={goBack} className="rounded-2xl py-4 px-6 text-base font-bold transition-colors hover:bg-white/10" style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                  Back
+                </button>
+                <button onClick={goNext} className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-opacity-90" style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
+                  {secIdx + 1 >= CCA_SECTIONS.length ? "Finish & review" : "Next section"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ─── DONE / REVIEW ───
+      const unansweredRequired = [];
+      CCA_SECTIONS.forEach((sec) => {
+        sec.fields.forEach((f) => {
+          if (f.req && isVisible(f, answers) && !isAnswered(f, answers)) {
+            unansweredRequired.push({ sec, f });
+          }
+        });
+      });
+
+      return (
+        <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+          <div className="max-w-md mx-auto px-4 py-8 cib-fade">
+            <button onClick={() => setMode("home")} className="text-xs font-bold uppercase tracking-wider mb-4 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
+              &larr; Back to sections
+            </button>
+            <Eyebrow>Review</Eyebrow>
+            <h1 className="cib-display text-3xl mb-2" style={{ color: "var(--spruce)" }}>Assessment summary</h1>
+            <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
+              {answers.child_name ? <span><strong>{answers.child_name}</strong> · </span> : null}
+              {unansweredRequired.length === 0
+                ? "All required fields are answered."
+                : unansweredRequired.length + " required field" + (unansweredRequired.length === 1 ? "" : "s") + " still blank (marked *)."}
+              {" "}Copy the summary before you close.
+            </p>
+
+            {unansweredRequired.length > 0 && (
+              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--lamplight)" }}>
+                <Eyebrow>Still needed</Eyebrow>
+                {unansweredRequired.slice(0, 12).map(({ sec, f }) => (
+                  <button
+                    key={f.id}
+                    onClick={() => { setSecIdx(CCA_SECTIONS.findIndex((s) => s.id === sec.id)); setMode("fill"); }}
+                    className="block w-full text-left text-sm py-1 transition-colors hover:text-[#7FA08C]"
+                    style={{ color: "var(--ink-soft)" }}
+                  >
+                    → {sec.num === "i" ? "Info" : "§" + sec.num}: {f.label.length > 80 ? f.label.slice(0, 80) + "…" : f.label}
+                  </button>
+                ))}
+                {unansweredRequired.length > 12 && (
+                  <p className="text-xs mt-2" style={{ color: "var(--ink-soft)" }}>…and {unansweredRequired.length - 12} more.</p>
+                )}
+              </div>
+            )}
+
+            {CCA_SECTIONS.map((sec) => {
+              const visible = sec.fields.filter((f) => isVisible(f, answers));
+              const answered = visible.filter((f) => formatAnswer(f, answers) !== null);
+              if (answered.length === 0) return null;
+              let lastGroup = null;
+              return (
+                <div key={sec.id} className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                  <Eyebrow>{sec.num === "i" ? "Child Information" : "Section " + sec.num + " — " + sec.title}</Eyebrow>
+                  {answered.map((f, i) => {
+                    const a = formatAnswer(f, answers);
+                    const showGroup = f.group && f.group !== lastGroup;
+                    if (f.group) lastGroup = f.group;
+                    return (
+                      <React.Fragment key={f.id}>
+                        {showGroup && <div className="text-xs font-bold uppercase tracking-wider mt-4 mb-1" style={{ color: "var(--lamplight-deep)" }}>{f.group}</div>}
+                        <div className="py-3" style={i < answered.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
+                          <div className="text-sm" style={{ color: "var(--ink-soft)" }}>{f.label}</div>
+                          <div className="font-bold mt-1 text-sm whitespace-pre-wrap" style={{ color: "var(--spruce)" }}>{a}</div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              );
+            })}
+
+            <button onClick={copySummary} className="w-full rounded-2xl py-4 text-lg font-bold mb-3 transition-colors hover:bg-opacity-90" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
+              {copied ? "Copied" : "Copy summary"}
+            </button>
+            <div className="flex gap-3">
+              <button onClick={() => { setSecIdx(0); setMode("fill"); }} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
+                Keep editing
+              </button>
+              <button onClick={clearAll} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: confirmClear ? "var(--alert)" : "var(--spruce)", border: "1px solid var(--mist)" }}>
+                {confirmClear ? "Tap again to erase" : "Start over"}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
