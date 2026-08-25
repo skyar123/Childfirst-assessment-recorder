@@ -95,6 +95,13 @@
           } catch (e) {
             console.error("Failed to write to localStorage", e);
           }
+        },
+        remove: async (key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch (e) {
+            console.error("Failed to remove from localStorage", e);
+          }
         }
       };
     }
@@ -113,6 +120,48 @@
     const CLINICIAN_CODE = "1234";
 
     const STORAGE_PREFIX = "cfar:";
+
+    // ─────────────────────────────────────────────────────────────
+    // Saved sessions
+    //
+    // Answers live on this device until somebody deletes them by hand.
+    // Reloading, backgrounding the browser, handing the phone back, or
+    // closing the tab never erases a session — only the delete buttons on
+    // the start page and the setup screen do, and both ask twice.
+    // ─────────────────────────────────────────────────────────────
+    const sessionKey = (id) => STORAGE_PREFIX + id + ":session:v1";
+
+    const countAnswers = (answers) =>
+      answers && typeof answers === "object"
+        ? Object.keys(answers).filter((k) => {
+            const v = answers[k];
+            return v !== undefined && v !== null && v !== "";
+          }).length
+        : 0;
+
+    async function readSession(id) {
+      try {
+        if (!window.storage) return null;
+        const r = await window.storage.get(sessionKey(id));
+        if (!r || !r.value) return null;
+        const parsed = JSON.parse(r.value);
+        if (!parsed || typeof parsed !== "object" || !parsed.answers) return null;
+        return parsed;
+      } catch (e) { return null; }
+    }
+
+    async function writeSession(id, data) {
+      try { if (window.storage) await window.storage.set(sessionKey(id), JSON.stringify(data)); }
+      catch (e) { /* a full or blocked store is not worth interrupting a caregiver for */ }
+    }
+
+    async function eraseSession(id) {
+      try {
+        if (!window.storage) return;
+        if (window.storage.remove) await window.storage.remove(sessionKey(id));
+        else await window.storage.set(sessionKey(id), "");
+      } catch (e) { /* ignore */ }
+    }
     function psiForm() {
       return {
         title: "Parenting Stress Index — Short Form",
@@ -583,9 +632,9 @@
         noContact: "No contact with other children",
         thanksTitle: "Thank you so much!",
         thanksLead: "You're all done — every question is answered.",
-        thanksBody: "Sharing this takes real trust, and it genuinely helps us understand your family and how to be useful to you. We appreciate your time.",
+        thanksBody: "Sharing this takes real trust, and it genuinely helps. We appreciate your time.",
         handBackTitle: "Please hand the device back",
-        handBackBody: "Your answers have been recorded. Your provider will go through them with you.",
+        handBackBody: "Your answers are saved.",
         providerAccess: "Provider access",
       },
       es: {
@@ -596,9 +645,9 @@
         noContact: "Sin contacto con otros niños/as",
         thanksTitle: "¡Muchas gracias!",
         thanksLead: "Ya terminó — respondió todas las preguntas.",
-        thanksBody: "Compartir esto requiere mucha confianza, y de verdad nos ayuda a entender a su familia y cómo serle útil. Agradecemos su tiempo.",
+        thanksBody: "Compartir esto requiere mucha confianza, y de verdad nos ayuda. Agradecemos su tiempo.",
         handBackTitle: "Por favor devuelva el dispositivo",
-        handBackBody: "Sus respuestas quedaron registradas. Su proveedor las revisará con usted.",
+        handBackBody: "Sus respuestas quedaron guardadas.",
         providerAccess: "Acceso del proveedor",
       },
     };
@@ -1348,7 +1397,7 @@
     // the code, and there is no path from the thank-you screen back into the
     // dashboard without it.
     // ─────────────────────────────────────────────────────────────
-    function Recorder({ instrument, onExit }) {
+    function Recorder({ instrument, onExit, resumeInPlace }) {
       const [form, setForm] = useState(instrument.build);
       const [mode, setMode] = useState("setup"); // setup | intro | fill | thanks | gate | results
       const [answers, setAnswers] = useState({});
@@ -1356,6 +1405,9 @@
       const [saveState, setSaveState] = useState("idle");
       const [copied, setCopied] = useState(false);
       const [confirmReset, setConfirmReset] = useState(false);
+      const [confirmNew, setConfirmNew] = useState(false);
+      const [confirmDelete, setConfirmDelete] = useState(false);
+      const [savedAt, setSavedAt] = useState(null);
       const [showEditor, setShowEditor] = useState(false);
       const [autoAdvance, setAutoAdvance] = useState(true);
       const [gateReturn, setGateReturn] = useState("results");
@@ -1363,6 +1415,8 @@
       const [lang, setLang] = useState("en");
       const loadedRef = useRef(false);
       const advanceRef = useRef(null);
+      const sessionLoadedRef = useRef(false);
+      const latestRef = useRef(null);
       const FORM_KEY = STORAGE_PREFIX + instrument.id + ":form:v1";
 
       // Load any saved edits to the question bank
@@ -1401,6 +1455,62 @@
 
       useEffect(() => () => { if (advanceRef.current) clearTimeout(advanceRef.current); }, []);
 
+      // Pick a saved session back up — answers, who it is for, and the exact
+      // question the caregiver was on. Results and the gate are never restored;
+      // a reload lands back in the questionnaire, not behind the code.
+      useEffect(() => {
+        let alive = true;
+        (async () => {
+          const data = await readSession(instrument.id);
+          if (alive && data) {
+            if (data.answers && typeof data.answers === "object") setAnswers(data.answers);
+            if (data.meta && typeof data.meta === "object") setMeta((m) => ({ ...m, ...data.meta }));
+            if (typeof data.idx === "number" && data.idx >= 0) setIdx(data.idx);
+            if (data.lang) setLang(data.lang);
+            if (data.savedAt) setSavedAt(data.savedAt);
+            // A reload lands the caregiver back on their question. Opening the
+            // instrument from the start page lands the clinician on setup,
+            // where the saved session is offered rather than assumed.
+            if (resumeInPlace && (data.mode === "intro" || data.mode === "fill" || data.mode === "thanks")) setMode(data.mode);
+          }
+          sessionLoadedRef.current = true;
+        })();
+        return () => { alive = false; };
+      }, [instrument.id, resumeInPlace]);
+
+      // Persist the session on every change. Deleting is the only thing that
+      // clears it, so an empty session is never written over a real one.
+      useEffect(() => {
+        if (!sessionLoadedRef.current) return;
+        if (countAnswers(answers) === 0) { latestRef.current = null; return; }
+        const payload = {
+          answers, meta, idx, lang,
+          mode: (mode === "results" || mode === "gate" || mode === "setup") ? "fill" : mode,
+          title: form.title,
+          total: askable.length,
+          savedAt: new Date().toISOString(),
+        };
+        latestRef.current = payload;
+        const t = setTimeout(() => {
+          writeSession(instrument.id, payload);
+          setSavedAt(payload.savedAt);
+        }, 300);
+        return () => clearTimeout(t);
+      }, [answers, meta, idx, mode, lang, instrument.id]);
+
+      // Flush on the way out — closing the tab, switching apps, or stepping
+      // back to the dashboard must not cost the last answer.
+      useEffect(() => {
+        const flush = () => { if (latestRef.current) writeSession(instrument.id, latestRef.current); };
+        window.addEventListener("pagehide", flush);
+        window.addEventListener("visibilitychange", flush);
+        return () => {
+          window.removeEventListener("pagehide", flush);
+          window.removeEventListener("visibilitychange", flush);
+          flush();
+        };
+      }, [instrument.id]);
+
       const askable = form.questions.filter((q) => q.text.trim().length > 0);
       const current = askable[idx];
       // Caregiver-facing copy follows `lang`; clinician screens stay English.
@@ -1414,12 +1524,45 @@
       const scored = instrument.score(form, answers, meta);
 
       // ─── flow ───
+      const hasSaved = countAnswers(answers) > 0;
+      const savedCount = countAnswers(answers);
+
+      // Starting over throws away saved answers, so it asks twice.
       const startSession = () => {
         if (askable.length === 0) return;
+        if (hasSaved && !confirmNew) {
+          setConfirmNew(true);
+          setTimeout(() => setConfirmNew(false), 4000);
+          return;
+        }
+        setConfirmNew(false);
+        latestRef.current = null;
+        eraseSession(instrument.id);
         setAnswers({});
         setIdx(0);
+        setSavedAt(null);
         setCopied(false);
         setMode("intro");
+      };
+      const resumeSession = () => {
+        if (askable.length === 0) return;
+        setCopied(false);
+        setIdx((i) => Math.min(i, askable.length - 1));
+        setMode("fill");
+      };
+      const deleteSaved = () => {
+        if (!confirmDelete) {
+          setConfirmDelete(true);
+          setTimeout(() => setConfirmDelete(false), 4000);
+          return;
+        }
+        setConfirmDelete(false);
+        latestRef.current = null;
+        eraseSession(instrument.id);
+        setAnswers({});
+        setIdx(0);
+        setSavedAt(null);
+        setCopied(false);
       };
       const goNext = () => {
         if (advanceRef.current) clearTimeout(advanceRef.current);
@@ -1459,7 +1602,6 @@
         if (!confirmReset) { setConfirmReset(true); setTimeout(() => setConfirmReset(false), 3000); return; }
         setConfirmReset(false);
         setForm(instrument.build());
-        setAnswers({});
       };
 
       // ─── summary ───
@@ -1473,6 +1615,22 @@
         if (q.type === "text") return typeof v === "string" && v.trim() ? v.trim() : "Not answered";
         const sc = q.bank === "worry" ? (form.worryScale || form.scale) : form.scale;
         return sc[v] !== undefined ? sc[v] : "Not answered";
+      };
+
+      // The number that goes in the box in CFCR — this instrument's own coded
+      // value for the answer, not a re-analysis of it.
+      const itemCode = (q) => {
+        const v = answers[q.id];
+        if (v === undefined || v === null) return "-";
+        if (v === "skip") return "skip";
+        if (v === "N") return "N";
+        if (q.type === "text") return "-";
+        const s = scored.itemScore ? scored.itemScore(q) : null;
+        if (s !== null && s !== undefined) return s;
+        // An item this instrument does not score (the BITSEA worry ratings):
+        // record the option the caregiver picked, counting from 1.
+        if (typeof v === "number") return v + 1;
+        return "-";
       };
 
       const summaryText = () => {
@@ -1503,8 +1661,18 @@
           scored.followUps.forEach((f) => { lines.push("  " + f.label); lines.push("    " + f.prompt); });
           lines.push("");
         }
-        lines.push("Responses");
-        askable.forEach((q, i) => { lines.push("  " + (i + 1) + ". " + q.text); lines.push("     " + answerLabel(q)); });
+        // Item number, the coded value, then the wording — laid out so the
+        // codes read straight down a column for entry.
+        lines.push("Responses   item · code · answer");
+        askable.forEach((q, i) => {
+          const n = String(i + 1).padStart(3, " ");
+          const code = String(itemCode(q)).padStart(5, " ");
+          const label = answerLabel(q);
+          lines.push("  " + n + "." + code + "   " + (label.length < 22 ? label + " ".repeat(22 - label.length) : label) + "  " + q.text);
+        });
+        lines.push("");
+        lines.push("Codes in item order");
+        lines.push("  " + askable.map((q, i) => (i + 1) + "=" + itemCode(q)).join("  "));
         if (instrument.copyright) { lines.push(""); lines.push(instrument.copyright); }
         return lines.join("\n");
       };
@@ -1542,6 +1710,27 @@
               <h1 className="cib-display text-3xl leading-tight mb-1" style={{ color: "var(--spruce)" }}>{form.title}</h1>
               <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>{form.subtitle}</p>
 
+              {/* Answers already on this device. Resume is the safe default; deleting asks twice. */}
+              {hasSaved && (
+                <div className="rounded-3xl p-5 mb-3" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                  <Eyebrow>Saved on this device</Eyebrow>
+                  <p className="text-sm mb-4" style={{ color: "var(--ink-soft)" }}>
+                    <strong style={{ color: "var(--spruce)" }}>{savedCount} of {askable.length} answered</strong>
+                    {meta.childName ? " · " + meta.childName : ""}
+                    {savedAt ? " · " + new Date(savedAt).toLocaleString() : ""}
+                  </p>
+                  <button onClick={resumeSession}
+                    className="w-full rounded-2xl py-4 text-base font-bold mb-2 transition-transform active:scale-[0.99]"
+                    style={{ background: "var(--moss-deep)", color: "var(--cream-on-dark)" }}>
+                    Resume where they left off
+                  </button>
+                  <button onClick={deleteSaved} className="w-full py-2 text-sm"
+                    style={{ color: confirmDelete ? "var(--alert)" : "var(--ink-soft)" }}>
+                    {confirmDelete ? "Tap again to delete these answers" : "Delete saved answers"}
+                  </button>
+                </div>
+              )}
+
               {/* The whole point of this screen: hand it over. Top, big, unmissable. */}
               <button
                 onClick={startSession}
@@ -1549,13 +1738,21 @@
                 className="w-full rounded-3xl px-6 py-7 text-left shadow-lg transition-transform active:scale-[0.99] mb-3"
                 style={askable.length === 0
                   ? { background: "var(--mist)", color: "var(--ink-soft)" }
-                  : { background: "var(--spruce)", color: "var(--cream-on-dark)" }}
+                  : confirmNew
+                    ? { background: "var(--rose)", color: "var(--cream-on-dark)" }
+                    : { background: "var(--spruce)", color: "var(--cream-on-dark)" }}
               >
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="cib-display text-2xl leading-tight mb-1">Hand to caregiver</div>
+                    <div className="cib-display text-2xl leading-tight mb-1">
+                      {hasSaved ? (confirmNew ? "Tap again to start over" : "Start a new session") : "Hand to caregiver"}
+                    </div>
                     <div className="text-sm" style={{ color: "var(--soft-on-dark)" }}>
-                      {askable.length} questions · results stay locked
+                      {confirmNew
+                        ? "This deletes the " + savedCount + " saved answers"
+                        : hasSaved
+                          ? "Clears the saved answers first"
+                          : askable.length + " questions · results stay locked"}
                     </div>
                   </div>
                   <span aria-hidden="true" className="text-3xl flex-shrink-0" style={{ color: "var(--lamplight)" }}>&rarr;</span>
@@ -1563,6 +1760,7 @@
               </button>
               <p className="text-xs text-center mb-8" style={{ color: "var(--ink-soft)" }}>
                 Opens on a welcome screen. Scores are never shown to the caregiver.
+                Answers stay on this device until you delete them.
               </p>
 
               {/* Session details */}
@@ -1748,13 +1946,10 @@
                 </div>
               </div>
 
+              {/* No section or subscale label here. A caregiver reading
+                  "Externalizing Problems" above a question about their child is
+                  being handed a judgment they never asked for. The question alone. */}
               <div key={current.id} className="cib-fade flex-1 flex flex-col">
-                {current.category ? (
-                  <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--soft-on-dark)", letterSpacing: "0.14em" }}>
-                    {current.category}
-                  </div>
-                ) : null}
-
                 <h1 className="cib-display text-2xl leading-snug mb-3" style={{ color: "var(--cream-on-dark)" }}>
                   {qText(current)}
                 </h1>
@@ -1911,12 +2106,12 @@
               </summary>
               <div className="px-4 pb-4">
                 {askable.map((q, i) => {
-                  const s = scored.itemScore ? scored.itemScore(q) : null;
+                  const s = itemCode(q);
                   return (
                     <div key={q.id} className="py-2.5" style={i < askable.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
                       <div className="flex justify-between items-start gap-2">
                         <div className="text-xs" style={{ color: "var(--ink-soft)" }}>{i + 1}. {q.text}</div>
-                        {s !== null && s !== undefined && <div className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>{s}</div>}
+                        <div className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>{s}</div>
                       </div>
                       <div className="text-sm font-bold mt-0.5" style={{ color: answers[q.id] === "skip" ? "var(--ink-soft)" : "var(--spruce)" }}>
                         {answerLabel(q)}
@@ -1931,8 +2126,8 @@
               {copied ? "Copied" : "Copy for the record"}
             </button>
             <div className="flex gap-3">
-              <button onClick={startSession} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
-                New session
+              <button onClick={startSession} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: confirmNew ? "var(--alert)" : "var(--spruce)", border: "1px solid var(--mist)" }}>
+                {confirmNew ? "Tap again to erase" : "New session"}
               </button>
               <button onClick={() => setMode("setup")} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
                 Setup
@@ -1948,22 +2143,51 @@
     // ─────────────────────────────────────────────────────────────
     function App() {
       const [active, setActive] = useState(null);
+      const [enteredBy, setEnteredBy] = useState("load");
+      const [saved, setSaved] = useState([]);
+      const [confirmId, setConfirmId] = useState(null);
+
+      const refreshSaved = useCallback(async () => {
+        const out = [];
+        for (let i = 0; i < INSTRUMENTS.length; i++) {
+          const ins = INSTRUMENTS[i];
+          const data = await readSession(ins.id);
+          if (data && countAnswers(data.answers) > 0) out.push({ ins, data });
+        }
+        setSaved(out);
+      }, []);
+
+      // Re-read on the way back from a recorder, so the list is never stale.
+      useEffect(() => { if (!active) refreshSaved(); }, [active, refreshSaved]);
+
+      const removeSaved = async (id) => {
+        if (confirmId !== id) {
+          setConfirmId(id);
+          setTimeout(() => setConfirmId((c) => (c === id ? null : c)), 4000);
+          return;
+        }
+        setConfirmId(null);
+        await eraseSession(id);
+        refreshSaved();
+      };
 
       useEffect(() => {
-        const handleHash = () => {
+        const handleHash = (fromNav) => {
           const id = window.location.hash.replace("#", "");
+          setEnteredBy(fromNav ? "nav" : "load");
           setActive(instrumentById(id) ? id : null);
         };
-        handleHash();
-        window.addEventListener("hashchange", handleHash);
-        return () => window.removeEventListener("hashchange", handleHash);
+        handleHash(false);
+        const onChange = () => handleHash(true);
+        window.addEventListener("hashchange", onChange);
+        return () => window.removeEventListener("hashchange", onChange);
       }, []);
 
       const open = (id) => { window.location.hash = id; };
       const close = () => { window.location.hash = ""; };
 
       const instrument = instrumentById(active);
-      if (instrument) return <Recorder key={instrument.id} instrument={instrument} onExit={close} />;
+      if (instrument) return <Recorder key={instrument.id} instrument={instrument} onExit={close} resumeInPlace={enteredBy === "load"} />;
 
       return (
         <div className="cib-body min-h-screen w-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
@@ -1977,6 +2201,38 @@
                 Phone-first instruments built to hand to a caregiver.
               </p>
             </div>
+
+            {saved.length > 0 && (
+              <div className="rounded-2xl p-4 mb-8" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--moss)", letterSpacing: "0.14em" }}>
+                  Saved on this device
+                </div>
+                <p className="text-xs mb-3" style={{ color: "var(--ink-soft)" }}>
+                  These answers stay here until you delete them. Closing the browser does not clear them.
+                </p>
+                {saved.map(({ ins, data }, i) => (
+                  <div key={ins.id} className="py-3" style={i < saved.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
+                    <div className="flex justify-between items-start gap-3">
+                      <button onClick={() => open(ins.id)} className="text-left flex-1">
+                        <div className="text-sm font-bold" style={{ color: "var(--spruce)" }}>{ins.card}</div>
+                        <div className="text-xs" style={{ color: "var(--ink-soft)" }}>
+                          {countAnswers(data.answers)} of {data.total || "?"} answered
+                          {data.meta && data.meta.childName ? " · " + data.meta.childName : ""}
+                          {data.savedAt ? " · " + new Date(data.savedAt).toLocaleString() : ""}
+                        </div>
+                      </button>
+                      <button onClick={() => removeSaved(ins.id)}
+                        className="text-xs font-bold flex-shrink-0 rounded-lg px-3 py-2"
+                        style={confirmId === ins.id
+                          ? { background: "var(--rose)", color: "var(--cream-on-dark)" }
+                          : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>
+                        {confirmId === ins.id ? "Tap again" : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="flex flex-col gap-4 mb-8">
               {INSTRUMENTS.map((ins) => (
