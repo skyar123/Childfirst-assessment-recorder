@@ -53,9 +53,17 @@ their life.
 - **Progress is honest and encouraging** — "Question 12 of 33" with a bar, and a quiet
   "Halfway there" / "Last one" at the milestones.
 - **Back always works**, so a caregiver can fix an answer without starting over.
+- **The question is all a caregiver sees.** No subscale or section heading sits above
+  it. "Externalizing Problems" printed over a question about their child hands them a
+  judgment they never asked for, and it can shade the answer that follows. Sections
+  still drive the scoring, and they still appear on the provider snapshot.
+- **Nothing is lost by leaving.** Answers save as they are tapped. A reload, a locked
+  screen, or a switched app comes back to the same question.
 - **The thank-you screen is the terminus.** Confetti, a drawn checkmark, 🎉, and real
   gratitude — no score, no interpretation, nothing that reads as a verdict on their
-  parenting. It asks them to hand the device back. Motion is skipped entirely for
+  parenting. It thanks them, says their answers are saved, and asks them to hand the
+  device back — it makes no promise about what happens next, because that is the
+  clinician's conversation to have, not a screen's. Motion is skipped entirely for
   anyone whose system requests reduced motion.
 
 ## The provider code
@@ -70,6 +78,16 @@ to handle — and nothing more. Do not treat it as protecting anything from a
 determined reader.
 
 To change it, edit `CLINICIAN_CODE` near the top of the script block in `index.html`.
+
+## Copy for the record
+
+"Copy for the record" on the provider snapshot copies plain text: the header, the
+totals and any alerts, then **every item with its coded value** — the number that goes
+in the box, in that instrument's own coding (PSI-4-SF 1–5 with Strongly Agree high,
+PKBS-2 0–3, CESD-R 0–3, BITSEA 0–2, PQ 1/0, M-CHAT-R 1 for a risk response). Codes read
+straight down a column, and a final **Codes in item order** line lists them as
+`1=3  2=0  …` for entry into CFCR without scrolling the list. Unanswered items are `-`,
+skips are `skip`, and the BITSEA "no contact with other children" is `N`.
 
 ## How scoring works
 
@@ -120,11 +138,19 @@ Each instrument computes **raw totals only**.
 Nothing is transmitted anywhere. No server, no analytics, no network request carrying
 a response.
 
-- **The five caregiver instruments** — answers exist only in the open tab. Closing or
-  reloading discards them. Copy the snapshot before leaving the results screen. Only
-  your *edits to a question bank* persist, in `localStorage`.
+- **The caregiver instruments** — answers autosave to `localStorage` and stay there
+  until someone deletes them by hand. Reloading, closing the tab, or backgrounding the
+  browser mid-questionnaire costs nothing: a reload lands the caregiver back on the
+  question they were on. Deleting takes two taps, in one of two places — the **Saved on
+  this device** panel on the start page, or **Delete saved answers** on that
+  instrument's setup screen. "Start a new session" also clears the saved answers, and
+  asks twice before it does. Your *edits to a question bank* persist separately.
 - **CCA** — answers autosave to `localStorage` so a long assessment can be paused and
   resumed. They stay on that device, in that browser. "Clear all answers" erases them.
+
+Saved answers are unencrypted and readable by anyone with the unlocked device. One
+device holds one session per instrument, so start a new session before handing the
+phone to the next family.
 
 Treat these as a recording convenience, not as a record. The clinical record is the
 record.
