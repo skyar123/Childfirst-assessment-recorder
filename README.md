@@ -15,6 +15,7 @@ instrument.
 | Instrument | Items | Completed by | What it captures |
 | --- | --- | --- | --- |
 | **PQ** — Parent Questionnaire | 33 | Caregiver | Family risk and protective factors across 14 domains |
+| **SNIFF** — Service Needs Inventory for Families | 78 | Caregiver | Service needs across eight domains, and which the family wants help getting. **English and Spanish** |
 | **M-CHAT-R** — Modified Checklist for Autism in Toddlers, Revised | 20 | Caregiver | Autism spectrum risk, ages 16–30 months |
 | **BITSEA** — Brief Infant-Toddler Social and Emotional Assessment | 42 + 2 | Caregiver | Problem behaviours and social-emotional competence, ages 12–35 months. **English and Spanish** |
 | **PSI-4-SF** — Parenting Stress Index, Short Form | 36 | Caregiver | Parent Distress, Parent-Child Dysfunctional Interaction, Difficult Child |
@@ -45,11 +46,11 @@ their life.
   about risks *the family feels comfortable sharing*, so a real skip option is truer
   to it than an implied refusal. Skips are recorded as skips and never scored as No.
   The M-CHAT-R has no skip — its terms require it be used in its entirety.
-- **Spanish, end to end.** The BITSEA ships with the published Spanish parent form, and
-  every caregiver-facing screen — title card, questions, response options, navigation,
-  the thank-you — follows the language you pick in Handoff. Clinician screens stay in
-  English. Other instruments show no toggle, because inventing a translation of a
-  validated instrument would not be safe.
+- **Spanish, end to end.** The BITSEA and the SNIFF ship with their published Spanish
+  parent forms, and every caregiver-facing screen — title card, questions, response
+  options, examples, write-in prompts, navigation, the thank-you — follows the language
+  you pick in Handoff. Clinician screens stay in English. Other instruments show no
+  toggle, because inventing a translation of a validated instrument would not be safe.
 - **Progress is honest and encouraging** — "Question 12 of 33" with a bar, and a quiet
   "Halfway there" / "Last one" at the milestones.
 - **Back always works**, so a caregiver can fix an answer without starting over.
@@ -84,10 +85,12 @@ To change it, edit `CLINICIAN_CODE` near the top of the script block in `index.h
 "Copy for the record" on the provider snapshot copies plain text: the header, the
 totals and any alerts, then **every item with its coded value** — the number that goes
 in the box, in that instrument's own coding (PSI-4-SF 1–5 with Strongly Agree high,
-PKBS-2 0–3, CESD-R 0–3, BITSEA 0–2, PQ 1/0, M-CHAT-R 1 for a risk response). Codes read
-straight down a column, and a final **Codes in item order** line lists them as
-`1=3  2=0  …` for entry into CFCR without scrolling the list. Unanswered items are `-`,
-skips are `skip`, and the BITSEA "no contact with other children" is `N`.
+PKBS-2 0–3, CESD-R 0–3, BITSEA 0–2, PQ 1/0, M-CHAT-R 1 for a risk response, SNIFF 1–4
+for the paper form's four columns left to right, so `3` is a requested new service).
+Codes read straight down a column, and a final **Codes in item order** line lists them
+as `1=3  2=0  …` for entry into CFCR without scrolling the list. Unanswered items are
+`-`, skips are `skip`, and the BITSEA "no contact with other children" is `N`. Items
+carrying a write-in show it after the answer.
 
 ## How scoring works
 
@@ -102,6 +105,21 @@ Each instrument computes **raw totals only**.
   concern regardless of score. The snapshot surfaces condensed **follow-up prompts**
   from the Child First Brief Guide for every section that scored: conversation
   openers, never a script to read aloud.
+- **SNIFF** — not a screen and not scored. 78 services across eight domains, each
+  answered with one of the paper form's four columns: had it in the past, have it now,
+  **want help getting it**, or do not want it. Only the third response counts, so the
+  total is the count of **new services requested**, broken down by domain. The
+  snapshot lists every requested service by its form number (`I.2`, `VIII.14`) for
+  entry into CFCR, alongside the service-need statuses (Met, Not met, In-progress)
+  and the fixed not-met reasons those needs have to carry. Requests under
+  *Help because I do not feel safe in my home*, *Domestic violence shelter*,
+  *Housing assistance*, and *Family shelter* are raised on their own. Items that
+  ask for a write-in on the paper form — area of concern, who in the family, which
+  *Other* service — get a text field under the options, and auto-advance is
+  suppressed on those so nobody is moved on mid-sentence. The two CFCR-only
+  responses (*does not want service BUT team recommends*, *Do not know*) and the
+  service-need status are clinician entries in CFCR, not answers a caregiver gives,
+  so the app names them rather than collecting them.
 - **BITSEA** — 42 items scored 0/1/2, split into a **Problem Total** (31 items, max 62)
   and a **Competence Total** (11 items, max 22); they are judged separately and in
   opposite directions. Problem **at or above** its cut score is a Possible Problem
@@ -175,7 +193,9 @@ PRO-ED, Inc. Both are copyrighted. These pages record responses and do not repro
 their manuals, norms, or conversion tables — convert raw scores using the official
 materials.
 
-**PQ** is Child First's own instrument. **CESD-R** is public domain:
+**PQ** and the **SNIFF** are Child First's own instruments; the SNIFF form is
+© Child First 2017, and the Spanish parent form here is the 2017 CFCR revision.
+**CESD-R** is public domain:
 
 > Eaton, W. W., Smith, C., Ybarra, M., Muntaner, C., & Tien, A. (2004). Center for
 > Epidemiologic Studies Depression Scale: review and revision (CESD and CESD-R). In
@@ -206,7 +226,7 @@ load from CDNs, so a first load needs a network connection.
 ## Files
 
 ```
-index.html           All six caregiver instruments, plus the dashboard
+index.html           All seven caregiver instruments, plus the dashboard
 cca-assessment.html  Comprehensive Child First Assessment (clinician)
 404.html             Not-found page
 images/logo.svg      Favicon
@@ -219,7 +239,7 @@ single `Recorder` component drives all of them. **Adding an instrument means add
 question bank, a scorer that returns `{ headline, rows, alerts, followUps }`, and a
 registry entry.** Nothing else changes.
 
-Each instrument is addressable directly: `#pq`, `#mchat`, `#bitsea`, `#psi`, `#pkbs`, `#cesdr`.
+Each instrument is addressable directly: `#pq`, `#sniff`, `#mchat`, `#bitsea`, `#psi`, `#pkbs`, `#cesdr`.
 The CCA is a separate page because it is a different kind of instrument — sections and
 conditional fields rather than a flat item list, and completed by the clinician.
 

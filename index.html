@@ -41,6 +41,7 @@
       --plum-soft: #9C8CBF;
       --sky: #3E6B8A;
       --sky-soft: #86A9C2;
+      --teal: #2C6E75;
     }
     .cib-display { font-family: 'Young Serif', Georgia, serif; }
     .cib-body { font-family: 'Karla', system-ui, sans-serif; }
@@ -131,9 +132,12 @@
     // ─────────────────────────────────────────────────────────────
     const sessionKey = (id) => STORAGE_PREFIX + id + ":session:v1";
 
+    // Keys ending in "_d" hold the free-text detail attached to an item (the
+    // SNIFF's "area of concern", "which service"), never an answer of its own.
     const countAnswers = (answers) =>
       answers && typeof answers === "object"
         ? Object.keys(answers).filter((k) => {
+            if (k.slice(-2) === "_d") return false;
             const v = answers[k];
             return v !== undefined && v !== null && v !== "";
           }).length
@@ -476,6 +480,158 @@
     ];
 
     const PQ_POSITIVE_CUTOFF = 3; // three or more risk factors screens positive
+
+    // ─── SNIFF Question Bank ───
+    // Service Needs Inventory for Families, the caregiver-facing paper form.
+    // © Child First 2017. English and Spanish parent forms, 78 items across the
+    // eight service domains that make up pages 1 to 8 of the SNIFF in CFCR.
+    //
+    // The paper form gives a caregiver four columns, and those are the four
+    // options here. CFCR adds two more responses that belong to the team rather
+    // than the family ("does not want service BUT team recommends" and "Do not
+    // know"), plus the service-need status on every identified need. Those are
+    // clinician entries made in CFCR, not answers a caregiver gives, so they are
+    // not offered here.
+    function sniffForm() {
+      return {
+        title: "Service Needs Inventory for Families",
+        title_es: "Inventario de Necesidades para Familias",
+        subtitle: "SNIFF: services your family has, wants, or does not need",
+        subtitle_es: "SNIFF: servicios que su familia tiene, quiere o no necesita",
+        audience: "parent",
+        allowSkip: true,
+        hasSpanish: true,
+        instructions: "Listed below are different types of services that families sometimes need or find useful. Please mark all the services that you have NOW, all the NEW services that you want or need (but do not have right now), and services that you do not want.",
+        scale: [
+          "I had this service in the PAST and I do not want or need it now",
+          "I have this service NOW and I do not need further help",
+          "YES, I want help getting this NEW service if possible",
+          "NO, I do not want this service",
+        ],
+        scale_es: [
+          "Yo tuve este servicio en el pasado y NO lo necesito ahora",
+          "Yo tengo este servicio AHORA y no necesito más ayuda",
+          "SÍ, yo quisiera este servicio y necesito ayuda",
+          "NO, yo no quiero este servicio",
+        ],
+        questions: [
+          // I. Child Development and Early Education
+          { id: "sn101", num: "I.1", domain: "I", text: "Developmental screening to determine if my child might be behind in his development", text_es: "Examen de Desarrollo Infantil para saber si mi hijo(a) tiene algún retraso" },
+          { id: "sn102", num: "I.2", domain: "I", text: "Early intervention evaluation and services", text_es: "Servicios de evaluación e intervención", detail: "Area of concern", detail_es: "Área de problema" },
+          { id: "sn103", num: "I.3", domain: "I", text: "School evaluation and services", text_es: "Evaluación y servicios en la escuela", detail: "Area of concern", detail_es: "Área de problema" },
+          { id: "sn104", num: "I.4", domain: "I", text: "Special education services", text_es: "Servicios de Educación Especial" },
+          { id: "sn105", num: "I.5", domain: "I", text: "Comprehensive developmental assessment by outside provider to determine if my child's development is on target", text_es: "Una evaluación total de desarrollo infantil, conducida por un profesional particular para saber si mi hijo(a) se está desarrollando bien" },
+          { id: "sn106", num: "I.6", domain: "I", text: "Participation in a program to monitor my child's development", text_es: "Participación en un programa que supervise el desarrollo de mi hijo(a)" },
+          { id: "sn107", num: "I.7", domain: "I", text: "Child care or preschool (like Head Start)", text_es: "Guardería o escuela Pre-escolar (como Head Start)", example: "Either a center-based classroom or home-based, family child care.", example_es: "Puede ser un salón de clase en una escuela o una guardería infantil casera.", detail: "Center-based or home-based?", detail_es: "¿En una escuela o casera?" },
+          { id: "sn108", num: "I.8", domain: "I", text: "Playgroup with other children and moms/caregivers", text_es: "Un grupo para compartir con otras madres, padres y sus hijos" },
+          { id: "sn109", num: "I.9", domain: "I", text: "Family or community center where I can drop in and meet other children and moms/caregivers", text_es: "Un lugar en la comunidad donde puedo conocer a otras familias y proveedores de servicios" },
+          { id: "sn110", num: "I.10", domain: "I", text: "After school program for my child", text_es: "Programas de después de clases para mi hijo(a)" },
+          { id: "sn111", num: "I.11", domain: "I", text: "Recreational programs or summer camp", text_es: "Programas de recreación para mi hijo(a) como campamento de verano" },
+          { id: "sn112", num: "I.12", domain: "I", text: "Other child development or early education service", text_es: "Otro servicio de desarrollo infantil o educación", detail: "Which service?", detail_es: "¿Cuál servicio?" },
+          // II. Child Behavior and Emotions
+          { id: "sn201", num: "II.1", domain: "II", text: "Screening to see if my child has a problem with behavior or feelings", text_es: "Examen para saber si mi hijo(a) tiene problemas de comportamiento o con su estado emocional" },
+          { id: "sn202", num: "II.2", domain: "II", text: "Assessments to understand my child's behavior", text_es: "Examen para entender el comportamiento de mi hijo(a)" },
+          { id: "sn203", num: "II.3", domain: "II", text: "Child care or education consultation to help the teachers understand my child's behavior and work better with my child in the classroom", text_es: "Consulta profesional en el salón de clase o guardería para ayudar a los maestros(as) a comprender mejor el comportamiento de mi hijo(a) y así poder ayudarlo(a) más" },
+          { id: "sn204", num: "II.4", domain: "II", text: "Special classroom to help my child with emotions or behavior", text_es: "Un salón especial de clases donde mi hijo(a) reciba apoyo para sus problemas de comportamiento" },
+          { id: "sn205", num: "II.5", domain: "II", text: "Parent-child play, support, or parenting group to help me with my child's behavior", text_es: "Un grupo de apoyo o enseñanza para padres e hijos(as) donde puedo recibir ayuda para lidiar con el comportamiento de mi hijo(a)" },
+          { id: "sn206", num: "II.6", domain: "II", text: "Home-based treatment for my child's behavior or feelings", text_es: "Tratamiento en casa para ayudar a mi hijo(a) con sus emociones y comportamiento" },
+          { id: "sn207", num: "II.7", domain: "II", text: "Treatment in a mental health agency for my child's behavior", text_es: "Tratamiento en una clínica de salud mental para ayudar a mi hijo(a) con sus emociones y comportamiento" },
+          { id: "sn208", num: "II.8", domain: "II", text: "Treatment in the community (like early care and education, pediatric clinic, or family center)", text_es: "Tratamiento en la comunidad (como en el pre-escolar, oficina de pediatra, clínica o un centro familiar)" },
+          { id: "sn209", num: "II.9", domain: "II", text: "Psychiatric evaluation to see if my child might need medication", text_es: "Evaluación psiquiátrica para saber si mi hijo(a) necesita medicación" },
+          { id: "sn210", num: "II.10", domain: "II", text: "Other child behavior or emotional health service", text_es: "Otro servicio para el comportamiento o el estado emocional de mi hijo(a)", detail: "Which service?", detail_es: "¿Cuál servicio?" },
+          // III. Child Health Services
+          { id: "sn301", num: "III.1", domain: "III", text: "Regular pediatrician or doctor for my child", text_es: "Un médico pediatra general para mi hijo(a)" },
+          { id: "sn302", num: "III.2", domain: "III", text: "Medical specialist to help with my child's specific health problems", text_es: "Un especialista médico para que ayude a mi hijo(a) con problemas específicos de salud" },
+          { id: "sn303", num: "III.3", domain: "III", text: "Dentist", text_es: "Dentista" },
+          { id: "sn304", num: "III.4", domain: "III", text: "Nutritionist to help with my child's diet so he can lose or gain weight", text_es: "Nutricionista para que ayude con la dieta de mi hijo(a) para que él (ella) pierda o suba de peso" },
+          { id: "sn305", num: "III.5", domain: "III", text: "Health insurance (Medicaid or private) for my child", text_es: "Seguro médico (Medicaid o privado) para mi hijo(a)" },
+          { id: "sn306", num: "III.6", domain: "III", text: "Visiting nurse", text_es: "Enfermera visitante" },
+          { id: "sn307", num: "III.7", domain: "III", text: "Other child health service", text_es: "Otro servicio de salud para mi hijo(a)", detail: "Which service?", detail_es: "¿Cuál servicio?" },
+          // IV. Caregiver Support
+          { id: "sn401", num: "IV.1", domain: "IV", text: "Telephone number so that I can get information or referral about new services for my family", text_es: "Un número de teléfono para obtener información o adquirir un referido a un servicio que mi familia necesita" },
+          { id: "sn402", num: "IV.2", domain: "IV", text: "Parenting support on the telephone", text_es: "Apoyo para padres por teléfono" },
+          { id: "sn403", num: "IV.3", domain: "IV", text: "Home-based individual parenting help for me and my child", text_es: "Servicios individuales de crianza de niños en mi casa" },
+          { id: "sn404", num: "IV.4", domain: "IV", text: "Parenting education or support group", text_es: "Educación de crianza de niños o un grupo de apoyo" },
+          { id: "sn405", num: "IV.5", domain: "IV", text: "Parent support and resource center that I can go to for information, support, and classes", text_es: "Un centro que provea información, clases y apoyo para padres de familia" },
+          { id: "sn406", num: "IV.6", domain: "IV", text: "Help getting a break and having someone else care for my child", text_es: "Ayuda cuando yo necesito que alguien cuide a mi hijo(a) porque me siento tan estresado/a que no lo puedo hacer" },
+          { id: "sn407", num: "IV.7", domain: "IV", text: "Drop in center where I can meet other families and receive support", text_es: "Un centro donde yo puedo entrar y conocer otras familias y obtener información" },
+          { id: "sn408", num: "IV.8", domain: "IV", text: "Other caregiver support service", text_es: "Otro servicio de apoyo para el padre, madre o encargado", detail: "Which service?", detail_es: "¿Cuál servicio?" },
+          // V. Adult Education and Employment
+          { id: "sn501", num: "V.1", domain: "V", text: "GED class or help finishing high school", text_es: "Clases de GED o ayuda para terminar la escuela secundaria" },
+          { id: "sn502", num: "V.2", domain: "V", text: "English (ESL) class", text_es: "Clases de inglés (ESL)" },
+          { id: "sn503", num: "V.3", domain: "V", text: "Computer training", text_es: "Clases de computadora" },
+          { id: "sn504", num: "V.4", domain: "V", text: "Job training", text_es: "Entrenamiento para empleos" },
+          { id: "sn505", num: "V.5", domain: "V", text: "Learning to read and write (literacy class)", text_es: "Aprender a leer y escribir (clases de alfabetización)" },
+          { id: "sn506", num: "V.6", domain: "V", text: "Applying for citizenship or residency", text_es: "Aplicar para ciudadanía o residencia" },
+          { id: "sn507", num: "V.7", domain: "V", text: "Other training programs, technical school, or college", text_es: "Otros programas de entrenamiento, escuelas técnicas, o universidad" },
+          { id: "sn508", num: "V.8", domain: "V", text: "Help finding new employment or a better job", text_es: "Ayuda para buscar un nuevo o mejor empleo" },
+          { id: "sn509", num: "V.9", domain: "V", text: "Other adult education or employment service", text_es: "Otro servicio de educación para adultos o empleo", detail: "Which service?", detail_es: "¿Cuál servicio?" },
+          // VI. Family Health Services
+          { id: "sn601", num: "VI.1", domain: "VI", text: "Medical doctor for myself or another family member", text_es: "Un médico general para mí u otro miembro de mi familia" },
+          { id: "sn602", num: "VI.2", domain: "VI", text: "Help find a medical specialist for a specific health problem for others in my family", text_es: "Ayuda para encontrar un especialista médico para otro miembro de mi familia que tiene un problema especial de salud", detail: "Who in the family?", detail_es: "¿Quién en la familia?" },
+          { id: "sn603", num: "VI.3", domain: "VI", text: "Prenatal care", text_es: "Cuidado prenatal" },
+          { id: "sn604", num: "VI.4", domain: "VI", text: "Health insurance (Medicaid or private) for members of my family", text_es: "Seguro médico (Medicaid o privado) para miembros de mi familia" },
+          { id: "sn605", num: "VI.5", domain: "VI", text: "Other family health service", text_es: "Otro servicio de salud para mi familia", detail: "Which service?", detail_es: "¿Cuál servicio?" },
+          // VII. Adult Mental Health
+          { id: "sn701", num: "VII.1", domain: "VII", text: "Evaluation to understand my worries, stress, pain, or sadness", text_es: "Una evaluación para entender mis preocupaciones, estrés, dolor y tristeza" },
+          { id: "sn702", num: "VII.2", domain: "VII", text: "Individual counseling or therapy", text_es: "Consejería o terapia individual" },
+          { id: "sn703", num: "VII.3", domain: "VII", text: "Psychiatric medication to help me feel better", text_es: "Medicamentos psicotrópicos para ayudarme a sentirme mejor" },
+          { id: "sn704", num: "VII.4", domain: "VII", text: "Group counseling or therapy", text_es: "Consejería o terapia en grupo" },
+          { id: "sn705", num: "VII.5", domain: "VII", text: "Couples, marital, or family counseling or therapy", text_es: "Terapia o consejería de pareja o familiar" },
+          { id: "sn706", num: "VII.6", domain: "VII", text: "Substance use treatment (for example, AA or drug rehab)", text_es: "Tratamiento de rehabilitación de consumo de substancias (AA, o rehabilitación de drogas)" },
+          { id: "sn707", num: "VII.7", domain: "VII", text: "Help because I do not feel safe in my home", text_es: "Ayuda porque no me siento seguro/a en mi casa", example: "The form lists three kinds of help here: safety planning, counseling, and safe shelter.", example_es: "El formulario menciona tres tipos de ayuda: plan de seguridad, consejería y albergue.", detail: "Safety planning, counseling, or safe shelter?", detail_es: "¿Plan de seguridad, consejería o albergue?" },
+          { id: "sn708", num: "VII.8", domain: "VII", text: "Other adult mental health service", text_es: "Otro servicio de salud mental para adultos", detail: "Which service?", detail_es: "¿Cuál servicio?" },
+          // VIII. Social Services and Other Concrete Needs
+          { id: "sn801", num: "VIII.1", domain: "VIII", text: "TANF or cash assistance", text_es: "TANF o ayuda de asistencia de dinero" },
+          { id: "sn802", num: "VIII.2", domain: "VIII", text: "SSI, cash assistance for a disability", text_es: "SSI, ayuda de asistencia de dinero para personas discapacitadas" },
+          { id: "sn803", num: "VIII.3", domain: "VIII", text: "Food stamps (SNAP)", text_es: "Cupones de comida (SNAP)" },
+          { id: "sn804", num: "VIII.4", domain: "VIII", text: "WIC, food support for my child", text_es: "WIC, asistencia de comida para niños" },
+          { id: "sn805", num: "VIII.5", domain: "VIII", text: "Food pantry, to get additional food for my family", text_es: "Banco de comida, para comida adicional para mi familia" },
+          { id: "sn806", num: "VIII.6", domain: "VIII", text: "Housing assistance", text_es: "Asistencia de vivienda" },
+          { id: "sn807", num: "VIII.7", domain: "VIII", text: "Family shelter", text_es: "Albergue para familias" },
+          { id: "sn808", num: "VIII.8", domain: "VIII", text: "Domestic violence shelter", text_es: "Albergue para víctimas de violencia doméstica" },
+          { id: "sn809", num: "VIII.9", domain: "VIII", text: "Child care financial assistance", text_es: "Asistencia de dinero para el cuidado de niños" },
+          { id: "sn810", num: "VIII.10", domain: "VIII", text: "Toys or books", text_es: "Juguetes y libros" },
+          { id: "sn811", num: "VIII.11", domain: "VIII", text: "Equipment or furniture for my child", text_es: "Muebles para mi hijo(a)" },
+          { id: "sn812", num: "VIII.12", domain: "VIII", text: "Clothing for my child or family", text_es: "Ropa para mi hijo(a) o familia" },
+          { id: "sn813", num: "VIII.13", domain: "VIII", text: "Furniture, appliances, and home supplies", text_es: "Muebles y electrodomésticos para mi casa" },
+          { id: "sn814", num: "VIII.14", domain: "VIII", text: "Help with utilities (heat, gas, electric)", text_es: "Ayuda con mis cuentas de calefacción, gas y electricidad" },
+          { id: "sn815", num: "VIII.15", domain: "VIII", text: "Immigration services", text_es: "Servicios de inmigración" },
+          { id: "sn816", num: "VIII.16", domain: "VIII", text: "Legal assistance", text_es: "Asesoría legal" },
+          { id: "sn817", num: "VIII.17", domain: "VIII", text: "Transportation help", text_es: "Ayuda con transporte" },
+          { id: "sn818", num: "VIII.18", domain: "VIII", text: "Translation or interpreter", text_es: "Traductor o intérprete" },
+          { id: "sn819", num: "VIII.19", domain: "VIII", text: "Other social service or concrete need", text_es: "Otro servicio social u otra necesidad", detail: "Which service?", detail_es: "¿Cuál servicio?" },
+        ],
+      };
+    }
+
+    // The eight domains, in the order they are printed on the form and paged
+    // through in CFCR.
+    const SNIFF_DOMAINS = [
+      { numeral: "I", name: "Child Development and Early Education", name_es: "Desarrollo Infantil y Educación" },
+      { numeral: "II", name: "Child Behavior and Emotions", name_es: "Estado Emocional y Comportamiento Infantil" },
+      { numeral: "III", name: "Child Health Services", name_es: "Servicios de Bienestar de Salud Infantil" },
+      { numeral: "IV", name: "Caregiver Support", name_es: "Apoyo para el padre, madre o encargado" },
+      { numeral: "V", name: "Adult Education and Employment", name_es: "Educación para adultos y empleo" },
+      { numeral: "VI", name: "Family Health Services", name_es: "Servicios Familiares de Bienestar de Salud" },
+      { numeral: "VII", name: "Adult Mental Health", name_es: "Bienestar de Salud Mental para Adultos" },
+      { numeral: "VIII", name: "Social Services and Other Concrete Needs", name_es: "Servicios Sociales y otras necesidades" },
+    ];
+
+    // The one response that counts as an identified need for care coordination.
+    const SNIFF_WANTS = 2;
+
+    // Service-need status and the not-met reasons, from the SNIFF reference
+    // guide. They are entered in CFCR, not asked of the caregiver, so the app
+    // lists them for the clinician rather than collecting them.
+    const SNIFF_STATUS = ["Met", "Not met", "In-progress"];
+    const SNIFF_NOT_MET_REASONS = [
+      "Referral(s) made and family is still waiting",
+      "Caregiver did not access available service",
+      "Client referred, not eligible for service",
+      "Service not available in community",
+      "Service not available in required language",
+    ];
 
     // ─── M-CHAT-R Question Bank ───
     // Modified Checklist for Autism in Toddlers, Revised.
@@ -860,6 +1016,98 @@
       };
     }
 
+    // ── SNIFF ──
+    // Not a scored instrument. It totals the services a family asked for help
+    // getting, because that is the response CFCR counts as an identified need
+    // and the only one that carries a service-need status. Every other response
+    // is recorded and reported but adds nothing to the total.
+    function scoreSNIFF(form, answers) {
+      const askable = form.questions.filter((q) => q.text.trim().length > 0);
+      const detailOf = (q) => {
+        const d = answers[q.id + "_d"];
+        return typeof d === "string" && d.trim() ? d.trim() : "";
+      };
+      const wants = (q) => answers[q.id] === SNIFF_WANTS;
+      const named = (q) => {
+        const d = detailOf(q);
+        return q.num + " " + q.text + (d ? ": " + d : "");
+      };
+
+      const rows = [];
+      const followUps = [];
+      let total = 0;
+      SNIFF_DOMAINS.forEach((dom) => {
+        const inDomain = askable.filter((q) => q.domain === dom.numeral);
+        const asked = inDomain.filter(wants);
+        const anyAnswered = inDomain.some((q) => answers[q.id] !== undefined && answers[q.id] !== null);
+        total += asked.length;
+        rows.push({
+          label: dom.numeral + ". " + dom.name,
+          value: asked.length,
+          max: inDomain.length,
+          tone: asked.length ? "watch" : "calm",
+          muted: !anyAnswered,
+        });
+        if (asked.length) {
+          followUps.push({
+            letter: dom.numeral,
+            label: dom.numeral + ". " + dom.name,
+            prompt: asked.map(named).join("  ·  "),
+          });
+        }
+      });
+
+      const verdict = total
+        ? {
+            label: total === 1 ? "1 need identified" : total + " needs identified",
+            tone: "watch",
+            note: "Only the needs marked “YES, I want help getting this NEW service” count as identified needs for care coordination. Each one needs a service need status in CFCR (" + SNIFF_STATUS.join(", ") + "), and at baseline most will be Not met or In-progress.",
+          }
+        : {
+            label: "No new needs",
+            tone: "calm",
+            note: "Nothing was marked “YES, I want help getting this NEW service,” so there is nothing to status in CFCR yet. The SNIFF is updated as needs change and at least quarterly.",
+          };
+
+      const alerts = [];
+      const safety = askable.filter((q) => (q.id === "sn707" || q.id === "sn808") && wants(q));
+      if (safety.length) {
+        alerts.push({
+          title: "Safety at home",
+          tone: "alert",
+          body: safety.map(named).join(". ") + ". Ask before the visit ends. The form names safety planning, counseling, and safe shelter as the kinds of help available here.",
+        });
+      }
+      const housing = askable.filter((q) => (q.id === "sn806" || q.id === "sn807") && wants(q));
+      if (housing.length) {
+        alerts.push({
+          title: "Housing",
+          tone: "watch",
+          body: housing.map(named).join(". ") + ". Housing and shelter needs are time-sensitive, whatever the rest of the inventory looks like.",
+        });
+      }
+      if (total) {
+        alerts.push({
+          title: "Entering this in CFCR",
+          tone: "calm",
+          body: "Status every identified need. If a need is Not met, the reason comes from a fixed list: " + SNIFF_NOT_MET_REASONS.join("; ") + ". Once a need is marked as wanted it should not be changed for the rest of the episode of care, only its status. Click Submit on every domain page, including pages you did not change, or nothing on that page saves.",
+        });
+      }
+
+      return {
+        itemScore: (q) => {
+          const v = answers[q.id];
+          return typeof v === "number" ? v + 1 : null;
+        },
+        headline: { label: "New services requested", value: total, max: askable.length, verdict },
+        rows,
+        alerts,
+        followUpsLabel: "Needs to enter in CFCR",
+        followUpsNote: "Every service the family marked “YES, I want help getting this NEW service,” by domain and item number. These are the only responses that count as identified needs, and each one needs a status.",
+        followUps,
+      };
+    }
+
     // ── M-CHAT-R ──
     // NO indicates risk on every item except 2, 5 and 12, where YES does.
     function scoreMCHAT(form, answers) {
@@ -1031,6 +1279,27 @@
         purpose: "These questions ask about your family's life right now — your child, your home, your health, and the support you have — so that the people working with you understand what you are carrying and where help would actually make a difference.",
         meta: ["33 questions", "About 5 minutes", "Yes or no", "You may skip any question"],
         parentNote: "Answer only what you feel comfortable sharing. There are no right answers, and nothing here is a test of your parenting.",
+      },
+      {
+        id: "sniff",
+        short: "SNIFF",
+        card: "SNIFF",
+        eyebrow: "Family Service Needs",
+        tag: "Baseline · Quarterly",
+        accent: "#2C6E75",
+        accentVar: "var(--teal)",
+        audience: "parent",
+        build: sniffForm,
+        score: scoreSNIFF,
+        hasSpanish: true,
+        blurb: "Service Needs Inventory for Families. Eight domains of child, family, health, education, and concrete services, and which of them a family actually wants help getting. English and Spanish.",
+        purpose: "These questions go through the kinds of services families sometimes need, for your child, for you, and for your household. For each one you say whether you already have it, whether you want help getting it, or whether it is not something you want.",
+        purpose_es: "Estas preguntas repasan los tipos de servicios que las familias a veces necesitan, para su niño/a, para usted y para su hogar. Para cada uno, usted indica si ya lo tiene, si quisiera ayuda para conseguirlo, o si no es algo que quiere.",
+        meta: ["78 services", "About 12 minutes", "Four choices", "Eight service areas"],
+        meta_es: ["78 servicios", "Unos 12 minutos", "Cuatro opciones", "Ocho áreas de servicio"],
+        parentNote: "This is a list of what exists, not a list of what you should need. Saying no to something is just as useful as saying yes, and you may skip anything.",
+        parentNote_es: "Esta es una lista de lo que existe, no de lo que usted debería necesitar. Decir que no a algo es tan útil como decir que sí, y puede omitir cualquier pregunta.",
+        copyright: "Service Needs Inventory for Families (SNIFF) © Child First 2017. Spanish parent form reproduced from the 2017 CFCR revision.",
       },
       {
         id: "mchat",
@@ -1576,7 +1845,7 @@
       };
       const choose = (value) => {
         setAnswers((a) => ({ ...a, [current.id]: value }));
-        if (autoAdvance && current.type !== "text") {
+        if (autoAdvance && current.type !== "text" && !current.detail) {
           if (advanceRef.current) clearTimeout(advanceRef.current);
           advanceRef.current = setTimeout(() => {
             setIdx((i) => {
@@ -1607,14 +1876,16 @@
       // ─── summary ───
       const answerLabel = (q) => {
         const v = answers[q.id];
-        if (v === "skip") return "Prefer not to answer";
+        const d = q.detail && typeof answers[q.id + "_d"] === "string" && answers[q.id + "_d"].trim()
+          ? ": " + answers[q.id + "_d"].trim() : "";
+        if (v === "skip") return "Prefer not to answer" + d;
         if (v === "N") return "N — no contact with other children";
-        if (v === undefined || v === null) return "Not answered";
-        if (q.type === "yesno") return v === 0 ? "Yes" : "No";
-        if (q.type === "choice" && Array.isArray(q.choices)) return q.choices[v] ? q.choices[v].label : "Not answered";
+        if (v === undefined || v === null) return (d ? "Not answered" + d : "Not answered");
+        if (q.type === "yesno") return (v === 0 ? "Yes" : "No") + d;
+        if (q.type === "choice" && Array.isArray(q.choices)) return (q.choices[v] ? q.choices[v].label : "Not answered") + d;
         if (q.type === "text") return typeof v === "string" && v.trim() ? v.trim() : "Not answered";
         const sc = q.bank === "worry" ? (form.worryScale || form.scale) : form.scale;
-        return sc[v] !== undefined ? sc[v] : "Not answered";
+        return (sc[v] !== undefined ? sc[v] : "Not answered") + d;
       };
 
       // The number that goes in the box in CFCR — this instrument's own coded
@@ -1657,7 +1928,7 @@
         }
         scored.alerts.forEach((a) => { lines.push("** " + a.title + " **"); lines.push("   " + a.body); lines.push(""); });
         if (scored.followUps && scored.followUps.length) {
-          lines.push("Suggested follow-up");
+          lines.push(scored.followUpsLabel || "Suggested follow-up");
           scored.followUps.forEach((f) => { lines.push("  " + f.label); lines.push("    " + f.prompt); });
           lines.push("");
         }
@@ -1668,7 +1939,7 @@
           const n = String(i + 1).padStart(3, " ");
           const code = String(itemCode(q)).padStart(5, " ");
           const label = answerLabel(q);
-          lines.push("  " + n + "." + code + "   " + (label.length < 22 ? label + " ".repeat(22 - label.length) : label) + "  " + q.text);
+          lines.push("  " + n + "." + code + "   " + (label.length < 22 ? label + " ".repeat(22 - label.length) : label) + "  " + (q.num ? q.num + " " : "") + q.text);
         });
         lines.push("");
         lines.push("Codes in item order");
@@ -1954,7 +2225,7 @@
                   {qText(current)}
                 </h1>
                 {current.example ? (
-                  <p className="text-base leading-relaxed mb-6" style={{ color: "var(--soft-on-dark)" }}>{current.example}</p>
+                  <p className="text-base leading-relaxed mb-6" style={{ color: "var(--soft-on-dark)" }}>{pick(current.example, current.example_es)}</p>
                 ) : <div className="mb-6" />}
 
                 {current.type === "yesno" ? (
@@ -1975,6 +2246,23 @@
                   <div className="flex flex-col gap-3">
                     {activeScale.map((label, i) => optionButton(label, value === i, () => choose(i), i))}
                     {current.noContact && optionButton(t.noContact, value === "N", () => choose("N"), "N")}
+                  </div>
+                )}
+
+                {/* A write-in that belongs to the item above it: the SNIFF's
+                    "area of concern", "who in the family", "which service".
+                    Auto-advance is suppressed on these so nobody is moved on
+                    mid-sentence. */}
+                {current.detail && current.type !== "text" && (
+                  <div className="mt-4">
+                    <label htmlFor="cib-detail" className="block text-sm mb-2" style={{ color: "var(--soft-on-dark)" }}>
+                      {pick(current.detail, current.detail_es)}
+                    </label>
+                    <input id="cib-detail" type="text"
+                      value={typeof answers[current.id + "_d"] === "string" ? answers[current.id + "_d"] : ""}
+                      onChange={(e) => { const v = e.target.value; setAnswers((a) => ({ ...a, [current.id + "_d"]: v })); }}
+                      className="w-full rounded-2xl px-4 py-3 text-base focus:outline-none"
+                      style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }} />
                   </div>
                 )}
 
@@ -2086,9 +2374,9 @@
             {/* Follow-up prompts */}
             {scored.followUps && scored.followUps.length > 0 && (
               <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                <Eyebrow>Suggested follow-up</Eyebrow>
+                <Eyebrow>{scored.followUpsLabel || "Suggested follow-up"}</Eyebrow>
                 <p className="text-xs mb-3" style={{ color: "var(--ink-soft)" }}>
-                  Conversation openers for the sections that scored. These are a menu, not a script — never read aloud.
+                  {scored.followUpsNote || "Conversation openers for the sections that scored. These are a menu, not a script — never read aloud."}
                 </p>
                 {scored.followUps.map((f, i) => (
                   <div key={i} className="py-2" style={i < scored.followUps.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
@@ -2110,7 +2398,7 @@
                   return (
                     <div key={q.id} className="py-2.5" style={i < askable.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
                       <div className="flex justify-between items-start gap-2">
-                        <div className="text-xs" style={{ color: "var(--ink-soft)" }}>{i + 1}. {q.text}</div>
+                        <div className="text-xs" style={{ color: "var(--ink-soft)" }}>{i + 1}. {q.num ? q.num + " " : ""}{q.text}</div>
                         <div className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>{s}</div>
                       </div>
                       <div className="text-sm font-bold mt-0.5" style={{ color: answers[q.id] === "skip" ? "var(--ink-soft)" : "var(--spruce)" }}>
