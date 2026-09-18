@@ -22,7 +22,7 @@ instrument.
 | **PKBS-2** — Preschool and Kindergarten Behavior Scales | 76 | Caregiver | Social Skills and Problem Behavior |
 | **CESD-R** — CES Depression Scale, Revised | 20 | Caregiver | Caregiver depression across nine symptom domains |
 | **CCA** — Comprehensive Child First Assessment | 11 sections | Clinician | Risk and protective factors, mental status, developmental and health history, formulation, treatment recommendations |
-| **Crisis Plan** — CFCR Crisis Plan for a young child | 9 sections | Clinician, with the caregiver | A good day, the early signs, what helps and in what order, who to call first, and a plain-language copy that goes home with the family |
+| **Crisis Plan** — CFCR Crisis Plan (rev. 10/23) | 3 CFCR pages | Clinician, with the caregiver | The CFCR fields, in CFCR's order, worded for a young child. Copies out for data entry, and prints a plain-language page for the family |
 
 ## The handoff
 
@@ -151,78 +151,43 @@ Each instrument computes **raw totals only**.
   alert regardless of the total.**
 - **CCA** — not scored. Tracks required fields, per-section completion, and conditional
   follow-ups, and produces a summary for the record.
-- **Crisis Plan** — not scored. Tracks required fields and per-section completion, and runs
-  a **readiness check** over the eighteen things a Medicaid or LME-MCO reviewer looks for
-  first: the three CFCR page attestations, dated signatures, a review date, dialable 24/7
-  numbers, two ranked contacts with consent status, contact restrictions, allergies and
-  medications, the least-restrictive ladder, a named owner and timeframe for the post-crisis
-  review, a copy in the caregiver's hands, and no blank narrative fields.
+- **Crisis Plan** — not scored. Tracks required fields, counts each field against CFCR's
+  character limit, and runs a ten-item readiness check: the plan date, all three page
+  attestations, clinical home and LME-MCO, the legally responsible person, a support with a
+  phone, consent answered for every support named, allergies and medications, page 3
+  complete, nothing over a character limit, and no blank text areas.
 
-## The Crisis Plan, and why it is not the state form
+## The Crisis Plan
 
-The CFCR Crisis Plan (rev. 10/23) is written in the first person, for an adult who is
-planning for their own crisis: *what I am like when I am feeling well*, *who will visit
-me while I am hospitalized*, *I don't like to be touched*. A Child First client is three
-years old. Handing that form to the room and mentally translating as you go is how a plan
-ends up describing the caregiver instead of the child.
+CFCR's Crisis Plan (rev. 10/23) is written in the first person, for an adult planning
+their own crisis: *what I am like when I am feeling well*, *who will visit me while I am
+hospitalized*. A Child First client is three years old, so filling it in means
+translating every prompt on the fly, and a form translated on the fly ends up describing
+the caregiver instead of the child.
 
-So `crisis-plan.html` keeps every CFCR field — the record copy maps each section back to
-the page it is keyed into — and rewrites the prompts around the child.
+`crisis-plan.html` is the same form, not a bigger one. Same fields, same order, same
+option lists, same character limits, grouped into CFCR's three pages, so the record copy
+reads straight down each page as you key it in. What changes:
 
-**It names the child on every screen.** Type the child's name once in Section i and it
-resolves into every label, hint and option after it: *What `<child>` is like on a good
-day*, *Who `<child>` settles for best*. A banner above every section states who the plan
-is for and that the caregiver is answering on their behalf. Answers store the raw token,
-so a name can be added or corrected at any point without touching what is already
-recorded.
+- **The prompts name the child.** Type the name once and it resolves into every prompt
+  after it: *What `<child>` is like when doing well*. Where a prompt is reworded,
+  CFCR's exact wording shows underneath, and the record copy uses CFCR's label, not the
+  reworded one.
+- **Six prompts move from first to third person**, since the caregiver and clinician are
+  answering on the child's behalf. A short note on page 3 says so.
+- **The hints are CFCR's own instruction text**, trimmed, with one child-specific line
+  where it helps: *"Children" means the siblings at home*, *answer for this child's
+  current ability, not their age*, *a minor cannot execute a PAD*.
+- **Character limits are counted as you type**, and flagged on review, because CFCR
+  truncates at 1000 or 4000 and nobody notices until the text is gone.
+- **Narrative fields carry a one-tap "nothing to report"**, so a reviewer never meets a
+  blank.
+- **The family copy** reorders the same answers into a plain-language page for the
+  caregiver: who to call, a good day, the early signs, what a crisis looks like, what
+  helps, what a responder needs to know. It asks no extra questions. It prints on its own
+  and copies as text for a phone.
 
-**It asks the questions this age actually raises.**
-
-- *Early signs* are the birth-to-five ones: clinginess, new separation distress, sleep
-  and appetite changes, losing words or skills, regression in toileting, head banging,
-  going still and watchful.
-- *Crisis* is defined the way it presents in a young child — distress nobody can
-  interrupt, running from adults, not eating or sleeping — and the plan asks outright
-  whether the **placement or the child-care spot** is at risk, because for a child this
-  young that is often what the crisis actually is.
-- *Communication* asks how this child communicates now, not what their age implies, and
-  then asks the question a responder needs most: **how this child shows they are
-  overwhelmed, before any words.**
-- *Coping skills* are replaced by what the adults do, in order, because at this age
-  calming is relational. The plan records who the child settles for, the settling steps
-  numbered 1-2-3, and **what makes it worse** — the most protective field on the form.
-- *Custody* is its own question. Who may consent, who may not be called, which court
-  order says so.
-- *Siblings* get a plan. The state form's "assistance needed with children" means, for a
-  child client, the brothers and sisters still in the room.
-- Adult legal instruments are answered honestly rather than left blank: a minor cannot
-  execute a WRAP plan, a futures plan, a psychiatric advance directive or a living will,
-  and the plan says so while recording the documents that *do* exist for a young child —
-  the IFSP, the child-care behaviour support plan, the DSS safety plan, the asthma or
-  seizure action plan.
-
-**It is built to survive a review.** Most narrative fields carry a one-tap *nothing to
-report* filler, because a reviewer reads a blank as a question nobody asked — the
-exceptions are the fields where "nothing to report" would not be a real answer, like
-what helps this child settle. The
-least-restrictive ladder is documented as an ordered, agreed sequence from natural
-supports through mobile crisis to the emergency department. The three CFCR *"Did you
-update this page?"* attestations are collected explicitly and the app tells you which of
-its sections feed each page. The post-crisis review needs a named person and a number of
-days, not a role. And the readiness check on the review screen lists what is still
-missing, with a tap to jump straight to it.
-
-**It prints a copy for the family.** Fields tagged **Family copy** in the editor are
-composed into a second, plain-language page — a fridge page. It is ordered the way a
-frightened adult reads at 2am: the numbers first (with the exact opening sentence to say
-on the phone, and 988 named for the caregiver's own distress, not only the child's), then
-the people to call in order, then the early signs, then what to try, then what not to do,
-then the line between a crisis and a hard day. The caregiver's own words are carried
-verbatim. It prints on its own, and copies as text for a phone. No jargon, no scores, no
-diagnosis codes.
-
-Two outputs, then: **Copy for the record** for CFCR, and the **family copy** for the
-fridge and the diaper bag.
+Two outputs: **Copy for the record** for CFCR, and the **family copy** for the fridge.
 
 ## Where the answers live
 
@@ -316,9 +281,9 @@ registry entry.** Nothing else changes.
 
 Each instrument is addressable directly: `#pq`, `#sniff`, `#mchat`, `#bitsea`, `#psi`, `#pkbs`, `#cesdr`.
 The CCA and the Crisis Plan are separate pages because they are a different kind of
-instrument — sections and conditional fields rather than a flat item list, and completed by
-the clinician. They share a section engine of their own: a `SECTIONS` array of typed fields,
-`showIf` conditions, and a summary builder.
+instrument: sections and conditional fields rather than a flat item list, and completed by
+the clinician. They share a section engine of their own, a `SECTIONS` array of typed
+fields, `showIf` conditions, and a summary builder.
 
 ## Deploying
 

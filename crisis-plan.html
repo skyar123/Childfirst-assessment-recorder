@@ -94,18 +94,22 @@
     const STORAGE_KEY_CRISIS = "crisisplan:responses:v1";
 
     // ─────────────────────────────────────────────────────────────
-    // Crisis Plan (CFCR rev. 10/23) — rewritten for a birth-to-five
-    // client, where the person in crisis cannot fill out a form, the
-    // caregiver is answering on their behalf, and calming is
-    // relational rather than self-directed.
+    // Crisis Plan, CFCR rev. 10/23.
+    //
+    // Field for field, in CFCR's order, so the record copy can be keyed
+    // straight down each page. Nothing is added to the form and nothing is
+    // dropped. What changes is the wording: CFCR writes in the first person,
+    // for an adult planning their own crisis, and a Child First client is a
+    // young child, so the prompts are rewritten in the third person and name
+    // the child. Where a label is reworded, field.cfcr carries CFCR's exact
+    // wording and the screen shows it under the prompt.
     //
     // Field types: text | tel | date | area | radio | check | select | note
-    // option.detail: "text" | "date" | "area" shows a follow-up when picked
-    // field.showIf: { field, equals | notEquals | includes | inList | filled }
-    // field.noneLabel: one-tap filler, so a Medicaid reviewer never meets a blank
-    // field.family: true  → feeds the plain-language family copy
-    // {child} / {childs} in any label, hint or option resolve to the child's
-    // first name, so every prompt on the screen names who it is about.
+    // field.max      CFCR's character limit, counted on screen
+    // field.cfcr     CFCR's own wording, when the prompt is reworded
+    // field.showIf   { field, equals | notEquals | includes | filled }
+    // field.family   feeds the plain-language copy for the caregiver
+    // {child} / {childs} resolve to the child's first name
     // ─────────────────────────────────────────────────────────────
     const YN = [{ label: "Yes" }, { label: "No" }];
 
@@ -114,773 +118,234 @@
       "Partners Health Management",
       "Trillium Health Resources",
       "Vaya Health",
-      "Other or not sure — confirm on the member's card",
+      "Other",
     ];
 
     const CRISIS_SECTIONS = [
-      // ─── i. Who this plan is for ───
+      // ─── Not a CFCR page. The name drives every prompt that follows. ───
       {
         id: "child",
         num: "i",
         title: "Who this plan is for",
-        blurb: "The child, their age, who can consent for them, and how their own voice is represented.",
+        blurb: "Not CFCR fields. The name is used so every prompt says who the plan is about.",
         fields: [
-          { id: "note_child", type: "note", tone: "child",
-            title: "This plan is about the child.",
-            body: "The client is a young child. Every question on this form asks about {child} — not about the adult answering. Caregiver needs appear only where they change what happens to {child} in a crisis. A child too young to talk still has preferences, and this plan records them as the caregiver reports them and the clinician observes them." },
-          { id: "child_name", label: "Child's name", type: "text", req: true,
-            hint: "Enter it first. Every question after this one will use {childs} name." },
-          { id: "child_id", label: "Child CFCR ID", type: "text", req: true },
-          { id: "child_dob", label: "{childs} date of birth", type: "date", req: true },
-          { id: "child_age", label: "{childs} age today — years and months", type: "text", req: true,
-            hint: "Crisis looks different at 9 months than at 4 years. Write it as \"2 years 7 months\" so a responder reading this knows who they are coming to help." },
-          { id: "plan_type", label: "What is this?", type: "radio", req: true, group: "Plan dates",
-            options: [
-              { label: "First crisis plan for {child}" },
-              { label: "Revision — something changed" },
-              { label: "Annual or treatment-plan review" },
-              { label: "Revision after a crisis event", detail: "date", detailLabel: "Date of the crisis event" },
-            ] },
-          { id: "plan_initial_date", label: "Date of initial crisis plan", type: "date", req: true },
-          { id: "plan_revision_date", label: "Date of last revision", type: "date",
-            hint: "Leave blank only if this is the first plan." },
-          { id: "plan_next_review", label: "Next review due", type: "date", req: true,
-            hint: "A crisis plan with no review date reads as a plan nobody came back to." },
-          { id: "completed_with", label: "Who built this plan with us", type: "check", req: true, group: "Who was in the room",
-            options: [
-              { label: "Birth mother" }, { label: "Birth father" },
-              { label: "Foster caregiver" }, { label: "Kinship caregiver" },
-              { label: "Adoptive parent" }, { label: "Court-appointed guardian" },
-              { label: "Grandparent or relative in the home" },
-              { label: "Other adult in the home" },
-              { label: "{child} — as developmentally able" },
-              { label: "Sibling" },
-              { label: "DSS social worker" },
-              { label: "Child First clinician" },
-              { label: "Child First Family Resource Partner" },
-              { label: "Other", detail: "text", detailLabel: "Who else" },
-            ] },
-          { id: "child_voice", label: "How {childs} own voice is represented here", type: "radio", req: true,
-            hint: "Person-centred does not stop applying because the person is two. Say how you know what {child} wants.",
-            options: [
-              { label: "Preverbal or under 3 — preferences from caregiver report and clinician observation" },
-              { label: "Showed us through play, drawing, or choosing", detail: "area", detailLabel: "What {child} showed us" },
-              { label: "Told us in their own words", detail: "area", detailLabel: "{childs} own words — quote them" },
-              { label: "Not yet included", detail: "text", detailLabel: "Why, and when this will happen" },
-            ] },
-          { id: "lrp_name", label: "Legally responsible person — who can consent to treatment for {child}", type: "text", req: true, group: "Who can consent" },
-          { id: "lrp_relationship", label: "Their relationship to {child}", type: "text", req: true },
-          { id: "lrp_phone", label: "Their phone", type: "tel", req: true },
-          { id: "guardian_appointed", label: "Has a guardian been appointed by a court?", type: "radio", req: true,
-            options: [
-              { label: "Yes", detail: "text", detailLabel: "Guardian's name and the court order date" },
-              { label: "No — parent is the legally responsible person" },
-            ] },
-          { id: "custody_status", label: "Legal custody of {child}", type: "radio", req: true,
-            hint: "A responder needs to know who may sign and who may not, before they arrive.",
-            options: [
-              { label: "Parent or parents have full custody" },
-              { label: "DSS has legal custody — {child} placed at home" },
-              { label: "DSS has legal custody — {child} in foster or kinship placement" },
-              { label: "Court-appointed guardianship with a relative" },
-              { label: "Shared or court-ordered custody between parents", detail: "area", detailLabel: "Which parent may consent, and when" },
-              { label: "Other", detail: "area", detailLabel: "Please describe" },
-            ] },
-          { id: "custody_docs", label: "Court orders, visitation terms, or safety plans a crisis responder must know about", type: "area", rows: 3,
-            noneLabel: "No court orders or restrictions on file.",
-            hint: "Include no-contact orders, supervised visitation, and anything that limits who may pick {child} up." },
+          { id: "child_name", label: "Child's name", type: "text", req: true },
+          { id: "child_age", label: "Age", type: "text", req: true, hint: "Years and months." },
         ],
       },
 
-      // ─── 1. Home, reaching the family, and how this child communicates ───
+      // ─── CFCR Crisis Plan, page 1 ───
       {
-        id: "home",
+        id: "p1",
         num: "1",
-        title: "Home, and how to reach this family",
-        blurb: "Address and phones, the clinical home and 24/7 numbers, housing, what help the family would need, how {child} communicates, language, and insurance.",
+        title: "Crisis Plan, page 1",
+        blurb: "Dates, address, phones, clinical home, living situation, communication, language, legally responsible person, insurance, diagnoses, medical and dental, medications, allergies, other providers.",
         cfcrPage: 1,
         fields: [
-          { id: "note_addr", type: "note",
-            title: "CFCR fills the address in for you.",
-            body: "Page 1 auto-populates from Client Contact Information. Confirm it out loud with the caregiver anyway — families move, and an old address sends mobile crisis to the wrong door." },
-          { id: "addr_street1", label: "Street", type: "text", req: true, group: "Where {child} lives" },
-          { id: "addr_street2", label: "Apartment or unit", type: "text" },
-          { id: "addr_city", label: "City", type: "text", req: true },
-          { id: "addr_state", label: "State", type: "text", req: true },
-          { id: "addr_zip", label: "ZIP", type: "text", req: true },
-          { id: "county", label: "County", type: "text", req: true,
-            hint: "Mobile crisis is dispatched by county. Get this right." },
-          { id: "home_access", label: "How to find the home and get inside", type: "area", rows: 3, req: true, family: true,
-            noneLabel: "Standard access — no special directions needed.",
-            hint: "Gate code, no unit number on the door, the dog, the porch light, no cell signal, park on the street. Minutes matter." },
-          { id: "ph_emergency", label: "Best emergency number", type: "tel", req: true },
-          { id: "ph_emergency_whose", label: "Whose phone is that?", type: "text", req: true,
-            hint: "Name the person who answers it, so a responder is not calling \"the family.\"" },
-          { id: "ph_alt", label: "Second number", type: "tel" },
-          { id: "ph_alt_whose", label: "Whose phone is that?", type: "text" },
-          { id: "phone_barriers", label: "Anything that makes the family hard to reach", type: "area", rows: 2,
-            noneLabel: "No known barriers to reaching the family.",
-            hint: "Prepaid minutes that run out, a shared phone, no voicemail, works nights, does not answer unknown numbers, text only." },
-          { id: "clinical_home", label: "Clinical home / first responder", type: "text", req: true, group: "The 24/7 numbers", family: true,
-            hint: "The agency that answers first for {child}." },
-          { id: "clinical_home_phone", label: "Clinical home / first responder phone", type: "tel", req: true, family: true },
-          { id: "lme", label: "LME-MCO", type: "select", req: true, options: LME_MCOS },
-          { id: "lme_phone", label: "LME-MCO phone", type: "tel", req: true, family: true },
-          { id: "crisis_mobile", label: "24/7 mobile crisis number for this county", type: "tel", req: true, family: true,
-            hint: "Write the number the family would actually dial tonight, not a main switchboard." },
-          { id: "note_988", type: "note", tone: "alert",
-            title: "988 is on this plan for the adults too.",
-            body: "988 — call or text, any hour — is on the family copy. For a child this young the person who needs a voice on the line at 2am is usually the caregiver. Say that to them plainly: calling 988 for your own panic is using the plan correctly, not failing it. 911 stays reserved for immediate danger to someone's body." },
-          { id: "after_hours", label: "After hours, who does this family call first?", type: "radio", req: true, family: true,
-            hint: "Pick one. A plan that lists six numbers with no order is a plan nobody can use at 2am.",
+          { id: "p1_initial_date", label: "Date of Initial Crisis Plan", type: "date", req: true },
+          { id: "p1_revision_date", label: "Date of Last Revision", type: "date" },
+
+          { id: "p1_street1", label: "Street 1", type: "text", req: true, group: "Client Physical Address",
+            hint: "CFCR auto-populates the address from Client Contact Information. Confirm it is current." },
+          { id: "p1_street2", label: "Street 2", type: "text" },
+          { id: "p1_apt", label: "APT/Suite", type: "text" },
+          { id: "p1_city", label: "City", type: "text", req: true },
+          { id: "p1_state", label: "State/Province", type: "text", req: true },
+          { id: "p1_zip", label: "Zip", type: "text", req: true },
+          { id: "p1_zip4", label: "Zip + 4", type: "text" },
+
+          { id: "p1_emergency_phone", label: "Client emergency phone", type: "tel", req: true, family: true,
+            hint: "A young child has no phone. Use the caregiver's." },
+          { id: "p1_alt_phone", label: "Client alternate phone", type: "tel", family: true },
+          { id: "p1_clinical_home", label: "Clinical home / First responder", type: "text", req: true, family: true },
+          { id: "p1_lme", label: "LME-MCO", type: "select", req: true, options: LME_MCOS },
+          { id: "p1_lme_phone", label: "LME-MCO Phone", type: "tel", req: true, family: true },
+
+          { id: "p1_living_stability", label: "Living situation stability", type: "radio", req: true, group: "Living Situation",
+            options: [{ label: "Stable" }, { label: "Unstable" }] },
+          { id: "p1_assist_areas", label: "In a crisis, assistance will be needed in the following area", type: "check", req: true,
+            hint: "\"Children\" means the siblings at home.",
             options: [
-              { label: "A named support person from Section 3" },
-              { label: "Child First clinician or FRP — business hours only, then mobile crisis" },
-              { label: "LME-MCO mobile crisis" },
-              { label: "988 — Suicide and Crisis Lifeline" },
-              { label: "911 — only if someone is in immediate danger" },
-              { label: "Other", detail: "text", detailLabel: "Who, and their number" },
-            ] },
-          { id: "living_stability", label: "Housing right now", type: "radio", req: true, group: "Living situation",
-            options: [
-              { label: "Stable" },
-              { label: "At risk — behind on rent, doubled up, or a notice to vacate", detail: "area", detailLabel: "What is happening, and by when" },
-              { label: "Unstable or homeless", detail: "area", detailLabel: "Where {child} is sleeping now" },
-              { label: "Shelter or transitional housing", detail: "text", detailLabel: "Which one, and the phone" },
-              { label: "Foster or kinship placement", detail: "text", detailLabel: "How long {child} has been there" },
-            ] },
-          { id: "living_comment", label: "Anything else about where {child} sleeps and spends the day", type: "area", rows: 3,
-            noneLabel: "Nothing further reported.",
-            hint: "Who else lives there, who is in and out, whether {child} has a safe space to settle in, stairs, heat, working locks." },
-          { id: "crisis_help_needed", label: "If a crisis happens, this family will need help with:", type: "check", req: true,
-            hint: "The state form asks about children, pets and transportation. For {child}, \"children\" means the siblings who still need someone while the adults are handling a crisis.",
-            options: [
-              { label: "Care for siblings or other children in the home" },
-              { label: "Transportation for {child}" },
-              { label: "Transportation for the caregiver" },
+              { label: "Children" },
               { label: "Pets" },
-              { label: "Caregiver's job — time off, or notifying an employer" },
-              { label: "Caregiver's school or training" },
-              { label: "Child care or preschool coverage" },
-              { label: "Interpreter" },
-              { label: "Food" },
-              { label: "Picking up medication" },
-              { label: "Nothing — the family has this covered" },
-              { label: "Other", detail: "text", detailLabel: "What else" },
+              { label: "Transportation" },
+              { label: "Other (describe below)" },
             ] },
-          { id: "employer_contact", label: "Does the caregiver need help contacting an employer, school, or program in a crisis?", type: "radio", req: true,
-            options: [
-              { label: "Yes", detail: "text", detailLabel: "Who to call, and what they may be told" },
-              { label: "No" },
-            ] },
-          { id: "childcare_name", label: "{childs} child care, preschool, or school", type: "text",
-            noneLabel: "Not enrolled." },
-          { id: "childcare_phone", label: "Their phone", type: "tel", showIf: { field: "childcare_name", filled: true } },
-          { id: "childcare_notify", label: "Should that program be told when there is a crisis?", type: "radio",
-            showIf: { field: "childcare_name", filled: true },
-            hint: "For a young child this is often where the crisis surfaces first — and where a placement can be lost.",
-            options: [
-              { label: "Yes — release on file" },
-              { label: "Yes — but get the release signed first" },
-              { label: "No" },
-              { label: "Only the fact of an absence, nothing clinical" },
-            ] },
-          { id: "comm_method", label: "How {child} communicates", type: "check", req: true, group: "How {child} tells us things",
-            hint: "Answer for {childs} real, current ability — not their age in years.",
-            options: [
-              { label: "Not yet talking — cries, coos, babbles" },
-              { label: "Single words" },
-              { label: "Two- and three-word phrases" },
-              { label: "Full sentences" },
-              { label: "Gestures and pointing" },
-              { label: "Signs" },
-              { label: "Picture system (PECS or similar)" },
-              { label: "AAC or speech device" },
-              { label: "Sounds and body movement" },
-              { label: "Understood by family, but not by people outside it" },
-              { label: "Other", detail: "text", detailLabel: "Please describe" },
-            ] },
-          { id: "comm_distress", label: "How {child} shows us they are overwhelmed — before any words", type: "area", req: true, rows: 4, family: true,
-            hint: "Goes quiet. Arches away. Covers their ears. Hides behind one particular adult. Freezes and watches. This is the sentence a responder needs most, because it is the signal they will see first." },
-          { id: "comm_calm", label: "Words and phrases that work with {child}", type: "area", req: true, rows: 3, family: true,
-            hint: "Write the caregiver's exact words, in the caregiver's language — \"I'm right here,\" \"we're going to be okay,\" the name they call them. A stranger reading this out loud should sound like home." },
-          { id: "lang_home", label: "Language spoken at home", type: "text", req: true, group: "Language" },
-          { id: "lang_caregiver", label: "Caregiver's preferred language for this plan", type: "text", req: true },
-          { id: "interpreter", label: "Interpreter needed?", type: "radio", req: true,
-            options: [
-              { label: "No" },
-              { label: "Yes — for spoken contact", detail: "text", detailLabel: "Which language and dialect" },
-              { label: "Yes — and this plan needs a written translation", detail: "text", detailLabel: "Which language" },
-              { label: "Yes — sign language", detail: "text", detailLabel: "Which system" },
-            ] },
-          { id: "ins_type", label: "Type of insurance", type: "select", req: true, group: "Coverage",
-            options: [
-              "NC Medicaid — Standard Plan (managed care)",
-              "NC Medicaid — Behavioral Health and I/DD Tailored Plan",
-              "NC Medicaid — Direct / fee-for-service",
-              "NC Health Choice",
-              "Private or commercial",
-              "Medicaid application pending",
-              "Uninsured",
-              "Other",
-            ] },
-          { id: "ins_policy", label: "Policy number / Member ID", type: "text", req: true },
-          { id: "ins_barrier", label: "Anything about coverage that could delay care for {child}", type: "area", rows: 2,
-            noneLabel: "No known coverage barriers.",
-            hint: "Recertification due, a lapse, a plan change, out-of-county coverage, no PCP assigned yet." },
-        ],
-      },
+          { id: "p1_assist_other", label: "Other, describe", type: "area", rows: 3, max: 1000,
+            showIf: { field: "p1_assist_areas", includes: "Other (describe below)" } },
 
-      // ─── 2. Health, diagnoses, medications ───
-      {
-        id: "health",
-        num: "2",
-        title: "{childs} health, diagnoses, and medications",
-        blurb: "Diagnoses with codes and dates, medical and dental, medications and who gives them, allergies, and every other provider working with this family.",
-        cfcrPage: 1,
-        fields: [
-          { id: "note_dx", type: "note",
-            title: "Diagnosing a child this young.",
-            body: "CFCR wants a DSM-5-TR or ICD-10 code with a date. If the formulation is held in DC:0-5, record the crosswalked code in the coded fields and the DC:0-5 impression in its own field below, so the record shows both. \"Assessment in progress\" is a real answer — an invented code is not." },
-          { id: "dx1_code", label: "Primary diagnosis — code", type: "text", req: true, group: "Diagnoses" },
-          { id: "dx1_name", label: "Primary diagnosis", type: "text", req: true },
-          { id: "dx1_date", label: "Date diagnosed", type: "date", req: true },
-          { id: "dx2_code", label: "Secondary diagnosis — code", type: "text" },
-          { id: "dx2_name", label: "Secondary diagnosis", type: "text" },
-          { id: "dx2_date", label: "Date diagnosed", type: "date", showIf: { field: "dx2_name", filled: true } },
-          { id: "dx3_code", label: "Tertiary diagnosis — code", type: "text" },
-          { id: "dx3_name", label: "Tertiary diagnosis", type: "text" },
-          { id: "dx3_date", label: "Date diagnosed", type: "date", showIf: { field: "dx3_name", filled: true } },
-          { id: "dx_source", label: "Who made these diagnoses?", type: "radio", req: true,
+          { id: "p1_employer_assist", label: "In a crisis, assistance will be needed to contact my employer. Assistance needed?", type: "radio", req: true, group: "Employment",
+            hint: "For a child: the caregiver's employer, or the child care program.",
+            options: YN },
+
+          { id: "p1_comm_method", label: "Method of communication", type: "check", req: true, group: "Communication",
+            hint: "Answer for {childs} current ability, not their age.",
             options: [
-              { label: "Child First clinician" },
-              { label: "Pediatrician or medical home" },
-              { label: "Psychiatrist or psychiatric NP" },
-              { label: "Prior provider — records on file" },
-              { label: "Not yet diagnosed — assessment in progress" },
+              { label: "Verbal" }, { label: "Nonverbal" }, { label: "Picture System" },
+              { label: "Gestures" }, { label: "Sound/Gestures" }, { label: "Other" },
             ] },
-          { id: "dx_dc05", label: "DC:0-5 diagnostic impression, if used", type: "area", rows: 3,
-            noneLabel: "DC:0-5 not used for this child.",
-            hint: "Include the relational context axis if you have it. It is often the part that explains the crisis." },
-          { id: "med_conditions", label: "Medical conditions a crisis responder must know about", type: "area", req: true, rows: 4, family: true,
+          { id: "p1_comm_comments", label: "Communication comments", type: "area", rows: 4, max: 1000, req: true, family: true,
+            hint: "How {child} shows distress before words, and who understands {child} outside the family." },
+
+          { id: "p1_language", label: "Preferred language", type: "text", req: true, group: "Preferred Language",
+            hint: "Note if an interpreter is needed." },
+
+          { id: "p1_guardian", label: "Guardian appointed?", type: "radio", req: true, group: "Legally Responsible Person",
+            hint: "Yes if a court appointed one, including DSS legal custody.",
+            options: YN },
+          { id: "p1_lrp_name", label: "Legally Responsible Person Name", type: "text", req: true },
+          { id: "p1_lrp_phone", label: "Contact Phone", type: "tel", req: true, family: true },
+
+          { id: "p1_ins_type", label: "Type of Insurance", type: "select", req: true, group: "Insurance",
+            options: [
+              "NC Medicaid", "NC Health Choice", "Private or commercial",
+              "Medicaid application pending", "Uninsured", "Other",
+            ] },
+          { id: "p1_ins_policy", label: "Policy Number/Member ID", type: "text", req: true },
+
+          { id: "p1_dx1_code", label: "Primary Diagnosis: DSM Code", type: "text", req: true, group: "Diagnoses" },
+          { id: "p1_dx1", label: "Primary Diagnosis", type: "text", req: true },
+          { id: "p1_dx1_date", label: "Diagnosis Date", type: "date", req: true },
+          { id: "p1_dx2_code", label: "Secondary Diagnosis: DSM Code", type: "text" },
+          { id: "p1_dx2", label: "Secondary Diagnosis", type: "text" },
+          { id: "p1_dx2_date", label: "Diagnosis Date", type: "date", showIf: { field: "p1_dx2", filled: true } },
+          { id: "p1_dx3_code", label: "Tertiary Diagnosis: DSM Code", type: "text" },
+          { id: "p1_dx3", label: "Tertiary Diagnosis", type: "text" },
+          { id: "p1_dx3_date", label: "Diagnosis Date", type: "date", showIf: { field: "p1_dx3", filled: true } },
+
+          { id: "p1_medical", label: "Please note all medical conditions", type: "area", req: true, rows: 5, max: 1000,
+            group: "Relevant Medical/Dental Information", family: true,
             noneLabel: "No medical conditions reported.",
-            hint: "Asthma, seizures, feeding tube, cardiac, prematurity, poor growth, hearing or vision, chronic pain, recent surgery, head injury, constipation that drives behaviour. Important for the Axis III picture and for anyone laying hands on {child}." },
-          { id: "med_action_plans", label: "Medical action plans already in place", type: "check",
-            hint: "If one exists, upload it to the Document Library and keep a copy where {child} spends the day.",
-            options: [
-              { label: "Asthma action plan" },
-              { label: "Seizure action plan" },
-              { label: "Allergy / anaphylaxis plan with an epinephrine auto-injector" },
-              { label: "Feeding or GI plan" },
-              { label: "Diabetes plan" },
-              { label: "None" },
-              { label: "Other", detail: "text", detailLabel: "Which plan, and who holds it" },
-            ] },
-          { id: "dental", label: "Dental concerns", type: "area", rows: 2,
-            noneLabel: "No dental concerns reported.",
-            hint: "Untreated decay hurts, and pain shows up as behaviour in a child who cannot say where it hurts." },
-          { id: "pcp_name", label: "Pediatrician or medical home", type: "text", req: true, group: "Medical contacts", family: true },
-          { id: "pcp_phone", label: "Their phone", type: "tel", req: true, family: true },
-          { id: "ed_preferred", label: "If {child} needs a hospital, which one", type: "text", family: true,
-            hint: "Name the ED the family can actually reach, and say if there is a pediatric one worth the extra miles." },
-          { id: "meds", label: "{childs} current medications", type: "area", req: true, rows: 5, family: true,
+            hint: "Important for Axis III. Include prematurity, feeding, seizures, asthma." },
+          { id: "p1_dental", label: "Dental Concerns", type: "area", rows: 3, max: 1000,
+            noneLabel: "No dental concerns reported." },
+
+          { id: "p1_meds", label: "List of Medications", type: "area", req: true, rows: 5, max: 1000,
+            group: "Medication Information", family: true,
             noneLabel: "No current medications.",
-            hint: "For each: name, dose, how often, what it is for, who prescribes it, which pharmacy, and the date it started or changed. Update this the day anything changes." },
-          { id: "meds_who_gives", label: "Who gives {child} their medicine, and how that goes", type: "area", rows: 3,
-            showIf: { field: "meds", filled: true },
-            noneLabel: "Not applicable — no medications.",
-            hint: "Spits it out, needs it in applesauce, only takes it from grandma, doses missed on child-care days. A plan that ignores this is a plan that fails on a Tuesday." },
-          { id: "meds_poor", label: "Medications that did not go well, and what happened", type: "area", rows: 3, family: true,
-            noneLabel: "No poorly tolerated medications reported.",
-            hint: "Name the medication and the reaction. This is what stops a prescriber in an ED from repeating it tonight." },
-          { id: "allergies", label: "Allergies — food, medication, environmental — and the reaction", type: "area", req: true, rows: 3, family: true,
-            noneLabel: "No known allergies.",
-            hint: "Include the reaction, not just the allergen." },
-          { id: "other_providers", label: "Other providers and programs working with this family", type: "area", req: true, rows: 5, group: "The rest of the team",
+            hint: "Med name, dose, frequency, reason for change, date, prescriber and pharmacy." },
+          { id: "p1_meds_poor", label: "Poorly Tolerated Medications (medication and reaction)", type: "area", rows: 4, max: 1000, family: true,
+            noneLabel: "No poorly tolerated medications reported." },
+
+          { id: "p1_allergies", label: "List all allergies (include medication and reaction when applicable)", type: "area", req: true, rows: 4, max: 1000,
+            group: "Allergies", family: true,
+            noneLabel: "No known allergies." },
+
+          { id: "p1_other_providers", label: "Other providers currently engaged with the family", type: "area", req: true, rows: 5, max: 1000,
+            group: "Other Providers Currently Working with Family",
             noneLabel: "No other providers currently engaged.",
-            hint: "Early Intervention or the CDSA, speech, OT, PT, Head Start, DSS, WIC, home visiting, a DV advocate, the caregiver's own providers. Include the service type and a contact — a responder should not have to guess who else is already holding part of this." },
-          { id: "caregiver_supports", label: "Caregiver's own care, where it touches {childs} safety", type: "area", rows: 4,
-            noneLabel: "Nothing reported that affects {childs} safety plan.",
-            hint: "Only what changes the plan: the caregiver's own treatment, a medication that sedates them, a substance use relapse plan, a DV safety plan, a medical condition that could leave {child} unattended, and who steps in if the caregiver cannot. This is {childs} record — keep it to what a responder must know to keep {child} safe." },
+            hint: "Service type and contact. Include Early Intervention, child care, DSS." },
+
+          { id: "p1_updated", label: "Did you update this page?", type: "radio", req: true, group: "Page 1", options: YN },
         ],
       },
 
-      // ─── 3. Who to call, in what order ───
+      // ─── CFCR Crisis Plan, page 2 ───
       {
-        id: "supports",
-        num: "3",
-        title: "Who to call, in what order",
-        blurb: "The people who show up for {child}, ranked, with phone numbers, consent status, and who can actually take a child right now.",
+        id: "p2",
+        num: "2",
+        title: "Crisis Plan, page 2",
+        blurb: "Supports and the calling order, crisis follow-up planning, additional planning documents.",
         cfcrPage: 2,
         fields: [
-          { id: "note_supports", type: "note", tone: "child",
-            title: "Rank them. Do not just list them.",
-            body: "CFCR asks for a calling order, and the order is the useful part. Ask the caregiver: at 2am, who do you actually call first? Then: who can be standing in your kitchen in twenty minutes? A name with no consent on file still belongs here — mark it, and a responder knows to call without sharing clinical detail." },
-          // Contact blocks 1-5 — see contactBlock() below the sections array.
-          ...contactBlock(1, true),
-          ...contactBlock(2, true),
-          ...contactBlock(3, false),
-          ...contactBlock(4, false),
-          ...contactBlock(5, false),
-          { id: "do_not_contact", label: "People who must NOT be contacted, and why", type: "area", req: true, rows: 3, group: "Restrictions", family: true,
-            noneLabel: "No contact restrictions.",
-            hint: "Court order, DSS safety plan, no release signed, unsafe for {child}. Say which one it is. A blank here reads as \"nobody asked.\"" },
-          { id: "consent_gaps", label: "Releases still needed", type: "area", rows: 2,
-            noneLabel: "All needed releases are signed and on file.",
-            hint: "List who the family wants us able to talk to, where the release is not signed yet, and when you will get it." },
-          { id: "note_calling", type: "note", tone: "alert",
-            title: "What to say when you call.",
-            body: "Coach the caregiver on the opening line, and put it on the family copy: \"I am calling about my child, who is {age} old. There is a crisis plan on file with {clinicalhome}.\" Naming the child's age in the first sentence changes who gets dispatched and how they arrive." },
-        ],
-      },
+          { id: "note_supports", type: "note",
+            body: "List the people to call in a crisis, in calling order, with contact information and whether a consent to release exists for each." },
+          // Five supports, matching CFCR's "Add another support?" See supportBlock() below.
+          ...supportBlock(1, true),
+          ...supportBlock(2, false),
+          ...supportBlock(3, false),
+          ...supportBlock(4, false),
+          ...supportBlock(5, false),
 
-      // ─── 4. A good day, the early signs, and what crisis looks like ───
-      {
-        id: "picture",
-        num: "4",
-        title: "{child} on a good day — and the early signs",
-        blurb: "What wellness looks like for this child, the routines that hold it up, what reliably makes things harder, the early signs, and what a real crisis looks like at this age.",
-        cfcrPage: 3,
-        fields: [
-          { id: "note_wellness", type: "note", tone: "child",
-            title: "Start with {child} at their best.",
-            body: "The state form writes this page in the child's own voice — \"what I am like when I am feeling well.\" {child} cannot write it, so the caregiver and the clinician write it for them, in the third person, from what they actually see. Ask the caregiver to describe a good day out loud and write down their words rather than translating them into clinical language. The caregiver's sentence is the one a stranger at 2am can use." },
-          { id: "well", label: "What {child} is like on a good day", type: "area", req: true, rows: 7, family: true, group: "Feeling well",
-            hint: "How they play, sleep, and eat. How they greet someone at the door. Whether they let themselves be comforted, and by whom. What the caregiver loves watching them do. This is the picture the whole plan is trying to get back to — write enough of it that a responder can tell how far from it {child} is tonight." },
-          { id: "well_strengths", label: "{childs} strengths we can build on", type: "check", req: true,
-            options: [
-              { label: "Curious and playful" }, { label: "Affectionate" },
-              { label: "Persistent — keeps trying" }, { label: "Funny" },
-              { label: "Sleeps well" }, { label: "Eats well" },
-              { label: "Settles with a familiar adult" },
-              { label: "Loves music" }, { label: "Loves being outside" },
-              { label: "Loves books" }, { label: "Loves water play" },
-              { label: "Gets along with other children" },
-              { label: "Recovers quickly once comforted" },
-              { label: "Tells us or shows us what they need" },
-              { label: "Other", detail: "text", detailLabel: "What else" },
-            ] },
-          { id: "routines", label: "{childs} daily routine, and the parts that matter most", type: "area", req: true, rows: 5,
-            hint: "Wake, meals, nap, drop-off, pick-up, bath, bedtime. Then say which one, if it breaks, takes the whole day down with it. For a child this age the routine is the regulation." },
-          { id: "triggers", label: "Things that reliably make things harder", type: "check", req: true, group: "Early signs",
-            hint: "The state form calls these significant events that trigger the onset of a crisis. At this age most of them are ordinary.",
-            options: [
-              { label: "Transitions and changes in routine" },
-              { label: "Separation at drop-off" },
-              { label: "Visits or contact with a parent or relative" },
-              { label: "A new placement, or a move" },
-              { label: "Court dates or DSS visits" },
-              { label: "Loud noise or crowds" },
-              { label: "Being hungry or tired" },
-              { label: "Being rushed" },
-              { label: "Medical or dental appointments" },
-              { label: "Haircuts, nail cutting, bath time" },
-              { label: "New people in the home" },
-              { label: "Holidays or anniversaries" },
-              { label: "Screens ending" },
-              { label: "Being told no" },
-              { label: "Being physically held or restrained" },
-              { label: "The caregiver being upset, unwell, or unavailable" },
-              { label: "Arguing or yelling in the home" },
-              { label: "Being left with someone unfamiliar" },
-              { label: "Other", detail: "text", detailLabel: "What else" },
-            ] },
-          { id: "triggers_dates", label: "Dates and anniversaries that are hard for {child} or this family", type: "area", rows: 3,
-            noneLabel: "No specific dates identified.",
-            hint: "The month a parent died. The anniversary of a removal. A birthday nobody celebrates. The week court is scheduled. Put them here so the team is not surprised in October." },
-          { id: "early_signs", label: "Early signs {child} is not doing well", type: "check", req: true,
-            hint: "These are the signs at this age. Check what this caregiver actually sees — not what a form expects.",
-            options: [
-              { label: "Clingier than usual" },
-              { label: "New or worse distress at separation" },
-              { label: "Trouble falling asleep, or waking in the night" },
-              { label: "Nightmares or night terrors" },
-              { label: "Eating much more, or much less" },
-              { label: "Going back to earlier behaviours — accidents, baby talk, wanting a bottle" },
-              { label: "More tantrums, or tantrums that last far longer" },
-              { label: "Hitting, biting, kicking, throwing" },
-              { label: "Hurting themselves — head banging, biting themselves, scratching" },
-              { label: "Going quiet, still, or blank" },
-              { label: "Avoiding eye contact or touch" },
-              { label: "Needing to be held constantly" },
-              { label: "Watchful — checking where the adults are" },
-              { label: "Repeating the same play over and over" },
-              { label: "More falls and accidents" },
-              { label: "Stomach aches, headaches, new complaints" },
-              { label: "Not wanting to go to child care" },
-              { label: "Losing words or skills they had" },
-              { label: "Other", detail: "text", detailLabel: "What else" },
-            ] },
-          { id: "early_signs_narrative", label: "In the caregiver's own words — what we notice first", type: "area", req: true, rows: 6, family: true,
-            hint: "Quote them. \"He starts asking me the same question over and over.\" \"She won't let me put her down.\" A caregiver recognises their own sentence at 2am in a way they will never recognise \"increased dysregulation.\"" },
-          { id: "crisis_looks_check", label: "When {child} is in crisis, they may:", type: "check", req: true, group: "What crisis looks like",
-            options: [
-              { label: "Cry or scream for a long time and cannot be soothed" },
-              { label: "Become aggressive in a way adults cannot interrupt" },
-              { label: "Hurt themselves" },
-              { label: "Run from adults — into the road, or out of the house" },
-              { label: "Hide and refuse to come out" },
-              { label: "Go completely blank or unresponsive" },
-              { label: "Stop eating or drinking" },
-              { label: "Not sleep for a long stretch" },
-              { label: "Vomit, gag, or hold their breath" },
-              { label: "Become unsafe with a sibling or a pet" },
-              { label: "Destroy things in the home" },
-              { label: "Other", detail: "text", detailLabel: "What else" },
-            ] },
-          { id: "crisis_looks", label: "Describe what someone would see when {child} goes into crisis", type: "area", req: true, rows: 5,
-            hint: "Write it from what has already happened. How long the distress lasts. Whether {child} can be reached at all. What they do to themselves or to others. Whether they run. Include the lessons from every previous event — this field is where they go." },
-          { id: "crisis_threshold", label: "What tells us this is a crisis and not a hard day", type: "area", req: true, rows: 4, family: true,
-            hint: "Name it concretely enough that the caregiver, the child-care teacher, and a responder would all draw the line in the same place: how long, how intense, what is different this time. This is the single most useful sentence on the form — and the one that keeps a hard Tuesday out of an emergency department." },
-          { id: "crisis_history", label: "Crisis events so far, and what we learned", type: "area", req: true, rows: 5,
-            noneLabel: "No crisis events to date.",
-            hint: "Dates, what happened, what was tried, what worked, what made it worse. Include ED visits, calls to mobile crisis, removals, and any time {child} was asked to leave a child-care program." },
-          { id: "placement_risk", label: "Is {childs} placement or child care at risk right now?", type: "radio", req: true,
-            hint: "For a child this young, this is usually what the crisis actually is. An adult crisis plan is written to prevent a hospitalisation; a plan for {child} is as often written to prevent a lost placement or a lost child-care spot.",
-            options: [
-              { label: "No" },
-              { label: "At risk of losing child care or preschool", detail: "area", detailLabel: "What has been said, and by when" },
-              { label: "At risk of a placement change or disruption", detail: "area", detailLabel: "What is happening" },
-              { label: "At risk of removal from the home", detail: "area", detailLabel: "What is happening, and who is involved" },
-              { label: "Recently changed placement or program", detail: "area", detailLabel: "When, and from where" },
-            ] },
-        ],
-      },
+          { id: "p2_coordinator", label: "Who is the primary contact to coordinate care if {child} requires inpatient or other specialized care?", type: "area", req: true, rows: 4, max: 1000,
+            cfcr: "Who is the primary contact to coordinate care if the ind. requires inpatient/other specialized care?",
+            group: "Crisis Follow Up Planning", family: true,
+            hint: "Include a contact number if it is not listed above." },
+          { id: "p2_visit", label: "Who will stay with {child} while hospitalized?", type: "area", req: true, rows: 4, max: 1000,
+            cfcr: "Who will visit the individual while hospitalized? (should reflect the individual's preference)",
+            family: true,
+            hint: "For a young child, name who stays and who relieves them." },
+          { id: "p2_debrief", label: "Who will lead a review/debriefing following a crisis, and within what timeframe?", type: "area", req: true, rows: 4, max: 1000,
+            hint: "Name the person and the number of days." },
 
-      // ─── 5. What helps, and what to try first ───
-      {
-        id: "helps",
-        num: "5",
-        title: "What helps {child} — and what to try first",
-        blurb: "The settling steps in order, who {child} settles for, what makes it worse, how a responder should approach, the least restrictive ladder, respite, and what has and has not worked before.",
-        cfcrPage: 3,
-        fields: [
-          { id: "note_helps", type: "note", tone: "child",
-            title: "At this age, calming is relational.",
-            body: "An adult crisis plan lists coping skills the person uses on themselves — breathing, journaling, a walk. {child} does not have those yet and will not tonight. Everything on this page is therefore about what the adults do, and the first move is almost always keeping {child} with the person they settle for. Write the steps as instructions a frightened adult can follow in order." },
-          { id: "helps_order", label: "What helps {child} settle — in the order to try it", type: "area", req: true, rows: 6, family: true, group: "What works",
-            hint: "Number them. 1, 2, 3. Start with what works most often and costs least: pick them up, take them to the quiet room, the song, the blanket, outside. This is the field the caregiver will read first, so write it in their words and keep it short enough to follow while a child is screaming." },
-          { id: "helps_people", label: "Who {child} settles for best", type: "text", req: true, family: true,
-            hint: "Name them, in order. The state form asks which individuals the person responds best to — for {child} this is the single most powerful intervention on the page." },
-          { id: "helps_objects", label: "Comfort objects, songs, foods, shows, and places that help", type: "area", rows: 3, family: true,
-            noneLabel: "None identified yet.",
-            hint: "The specific blanket. The one song. The corner behind the couch. Name them exactly — \"a stuffed animal\" does not help anyone find the right one at midnight." },
-          { id: "helps_sensory", label: "Sensory strategies that help", type: "check",
-            options: [
-              { label: "Being held or rocked" },
-              { label: "Deep pressure, or a weighted blanket" },
-              { label: "Swinging or bouncing" },
-              { label: "Being wrapped or swaddled" },
-              { label: "Quiet and low light" },
-              { label: "Music, or white noise" },
-              { label: "Water — bath, sink, sprinkler" },
-              { label: "Going outside" },
-              { label: "Sucking, chewing, or a pacifier" },
-              { label: "Big movement — walking, running, dancing" },
-              { label: "Being left in a safe space with an adult nearby but quiet" },
-              { label: "None of these reliably help" },
-              { label: "Other", detail: "text", detailLabel: "What else" },
-            ] },
-          { id: "prevention", label: "What has kept {child} out of crisis so far", type: "area", req: true, rows: 4,
-            hint: "The state form's prevention and early-intervention field, and the one utilization reviewers read most closely. Routines that hold. The FRP's weekly check-in. A warning before every transition. The child-care teacher who knows them. Respite that arrived in time. Name the people, and say what they did." },
-          { id: "do_not_do", label: "What makes it worse — please do not do this", type: "area", req: true, rows: 5, family: true, group: "What to avoid",
-            hint: "Raising your voice. Holding them down. Taking them away from their caregiver. Too many adults in the room. Bright lights. Asking a lot of questions. Leaving them alone. Say it as plainly as that — this is the most protective field on the form for a child this young, and the one a stranger most needs before they walk in." },
-          { id: "responder_guidance", label: "For anyone arriving to help — how to approach {child}", type: "area", req: true, rows: 5, family: true,
-            hint: "Get low. Go slow. One adult talks, not four. Keep the caregiver in the room and in sight. Tell them before you touch them. Uniforms, badges, and radios may frighten them. Write this as if to someone who has never met {child} and has eight minutes." },
-          { id: "restrictive", label: "The family's stated preference about physical holding or restraint", type: "radio", req: true,
-            hint: "Ask it directly and record the answer. Documenting the preference in advance is what makes a restrictive intervention reviewable afterwards.",
-            options: [
-              { label: "Do not physically hold or restrain {child} unless there is immediate danger of serious harm" },
-              { label: "Only the named caregiver may hold {child}, and only as a safety hold" },
-              { label: "Discussed — see the notes below", detail: "area", detailLabel: "What was agreed" },
-              { label: "Not discussed yet — schedule it", detail: "date", detailLabel: "When this will be discussed" },
-            ] },
-          { id: "ladder", label: "Least restrictive steps, in this order — check every one this family agrees to", type: "check", req: true, group: "The ladder",
-            hint: "Natural and community supports first, then formal services, then emergency services. Leave a step unchecked if it does not apply to this family or they do not agree to it, and say why below.",
-            options: [
-              { label: "1. Caregiver uses the settling steps on this plan" },
-              { label: "2. Call a named support person from Section 3" },
-              { label: "3. Call the Child First clinician or FRP — business hours" },
-              { label: "4. Use planned respite, or the back-up caregiver" },
-              { label: "5. Call the LME-MCO mobile crisis line" },
-              { label: "6. Call 988 — including for the caregiver's own distress" },
-              { label: "7. Walk-in behavioural health or urgent care" },
-              { label: "8. Go to the emergency department" },
-              { label: "9. Call 911 — only if someone is in immediate danger" },
-            ] },
-          { id: "ladder_notes", label: "Notes on those steps", type: "area", rows: 3,
-            noneLabel: "No exceptions or local notes.",
-            hint: "Which steps this family will not use and why. Which walk-in clinic. How far the ED is. Whether 911 has been to this home before, and how that went." },
-          { id: "respite", label: "Respite or back-up care", type: "radio", req: true,
-            options: [
-              { label: "Yes — a named back-up caregiver", detail: "text", detailLabel: "Who, and their phone" },
-              { label: "Yes — formal respite through the LME-MCO", detail: "text", detailLabel: "Which provider, and how to request it" },
-              { label: "Being arranged", detail: "text", detailLabel: "What is in motion, and by when" },
-              { label: "No back-up available — this is a gap in the plan" },
-              { label: "Not needed" },
-            ] },
-          { id: "stabilization", label: "Strategies for crisis response and stabilization", type: "area", req: true, rows: 5,
-            hint: "The state form's own field, kept word for word for the record. Everything known to help {child} become stable, beginning with natural and community supports and the least restrictive step. Include how the family gets back-up in an emergency, and how respite is requested if it is an option." },
-          { id: "worked_not_worked", label: "What has worked well, and what has not", type: "area", req: true, rows: 5,
-            noneLabel: "No prior crisis response to draw on yet.",
-            hint: "Acceptable and unacceptable approaches from past crises: which facilities, which medications, which people, which approaches. Name what should not be repeated as specifically as what should." },
-          { id: "facility_pref", label: "Preferred facility or provider if {child} needs a higher level of care", type: "text",
-            noneLabel: "No preference stated." },
-          { id: "facility_avoid", label: "A facility, provider, or approach the family does not want — and why", type: "area", rows: 3,
-            noneLabel: "No facility or provider the family wishes to avoid.",
-            hint: "Record the reason as well as the name. A stated preference with a reason behind it carries weight in the moment; a bare name does not." },
-          { id: "sibling_plan", label: "Plan for siblings and the other children in the home during a crisis", type: "area", req: true, rows: 3, family: true,
-            noneLabel: "No other children in the home.",
-            hint: "Who takes them, where they go, and who tells them what is happening in words their age can hold. The siblings are in the room for all of this." },
-          { id: "caregiver_own", label: "What the caregiver needs in the moment to stay steady", type: "area", rows: 4, family: true,
-            noneLabel: "Nothing identified yet.",
-            hint: "Not a detour from {childs} plan — the route to it. {child} borrows the caregiver's nervous system to calm down. Ask what helps them hold on: someone to sit with them, five minutes on the porch, a text to their sister, 988." },
-        ],
-      },
-
-      // ─── 6. Higher level of care, and what happens after ───
-      {
-        id: "followup",
-        num: "6",
-        title: "If {child} needs more care — and what happens after",
-        blurb: "Who coordinates, who stays with {child}, who gets notified, who leads the review and when, and what has to be in place before {child} comes home.",
-        cfcrPage: 2,
-        fields: [
-          { id: "note_followup", type: "note", tone: "child",
-            title: "A young child does not get visited. Someone stays.",
-            body: "The state form asks who will visit while hospitalized, and says the answer should reflect the individual's own preference. For {child} the answer is not a visiting list — it is which familiar adult stays, and who relieves them so that adult can sleep. Record how you know it is the right person: the caregiver's report, or your own observation of who {child} actually settles for." },
-          { id: "coord_primary", label: "Primary contact to coordinate care if {child} needs inpatient or other specialized care", type: "area", req: true, rows: 3, family: true,
-            hint: "One named person, their role, and a number that gets answered. Not \"the team.\"" },
-          { id: "who_stays", label: "Who stays with {child}", type: "area", req: true, rows: 4, family: true,
-            hint: "Name the first person and the one who relieves them. Say who takes the overnight. Note anything a hospital would need to allow it — a release, a placement rule, a court order." },
-          { id: "who_stays_pref", label: "How we know that is the right person", type: "radio", req: true,
-            options: [
-              { label: "Caregiver's report" },
-              { label: "Clinician's observation of who {child} settles for" },
-              { label: "{child} told us or showed us" },
-              { label: "A court order or placement rules decide this", detail: "area", detailLabel: "What the order allows" },
-            ] },
-          { id: "notify", label: "Who gets notified if {child} is hospitalized or placed", type: "check", req: true,
-            options: [
-              { label: "Legally responsible person" },
-              { label: "The other parent" },
-              { label: "DSS social worker" },
-              { label: "Child First clinician and FRP" },
-              { label: "Pediatrician or medical home" },
-              { label: "LME-MCO care manager" },
-              { label: "Child care or preschool" },
-              { label: "Early Intervention or the CDSA" },
-              { label: "Attorney or guardian ad litem" },
-              { label: "Faith community" },
-              { label: "Other", detail: "text", detailLabel: "Who else" },
-            ] },
-          { id: "debrief", label: "Who leads the review after a crisis", type: "area", req: true, rows: 3, group: "The review afterwards",
-            hint: "Name the person, not the role. Say who is invited: the caregiver first, then the clinician, the FRP, and anyone who was there. The review is where this plan gets better." },
-          { id: "debrief_days", label: "Within what timeframe", type: "radio", req: true,
-            options: [
-              { label: "Within 24 hours" },
-              { label: "Within 3 business days" },
-              { label: "Within 5 business days" },
-              { label: "Within 7 days" },
-              { label: "Other", detail: "text", detailLabel: "Timeframe" },
-            ] },
-          { id: "discharge", label: "What has to be in place before {child} comes home", type: "area", req: true, rows: 5,
-            hint: "Appointments booked, medication in hand, the child-care program ready to take them back, supports in the house for the first nights, who checks in and on which day. Write the actual list — this is the field that prevents the second crisis." },
-          { id: "plan_update_after", label: "Will this crisis plan be updated after a crisis event?", type: "radio", req: true,
-            options: [
-              { label: "Yes — within the review timeframe above" },
-              { label: "Yes — at the next treatment plan review" },
-              { label: "Yes — on another schedule", detail: "text", detailLabel: "When" },
-              { label: "No", detail: "text", detailLabel: "Why not" },
-            ] },
-        ],
-      },
-
-      // ─── 7. Other plans and documents ───
-      {
-        id: "docs",
-        num: "7",
-        title: "Other plans and documents",
-        blurb: "What else exists for this child, what does not apply because the client is a minor, and what to upload to the Document Library.",
-        cfcrPage: 2,
-        fields: [
           { id: "note_docs", type: "note",
-            title: "Some of these were written for adults. Say so.",
-            body: "CFCR asks about WRAP plans, futures plans, psychiatric advance directives, and living wills. Three of those are instruments a person executes for themselves, and {child} cannot execute any of them — a minor's treatment is directed by the legally responsible person. Answering \"Not applicable — client is a minor\" is the accurate answer and leaves no blank behind. Then record the documents that do exist for a child this age: the IFSP, the child-care behaviour support plan, the safety plan, the medical action plan. Upload every \"Yes\" to the Document Library." },
-          { id: "doc_behavior", label: "Behaviour support plan — home, child care, or preschool", type: "radio", req: true,
-            options: [
-              { label: "Yes", detail: "text", detailLabel: "Who holds it, and the date" },
-              { label: "No" },
-              { label: "In progress", detail: "text", detailLabel: "Who is writing it, and by when" },
-            ] },
-          { id: "doc_behavior_notes", label: "Notes", type: "area", rows: 2, noneLabel: "No further notes.",
-            showIf: { field: "doc_behavior", notEquals: "No" } },
-          { id: "doc_suicide", label: "Suicide prevention and intervention plan", type: "radio", req: true,
-            hint: "For most children under five this is not developmentally indicated. Say that rather than leaving it blank — and if there is self-injury, Section 4 is where it belongs.",
-            options: [
-              { label: "Not applicable — not developmentally indicated at {childs} age" },
-              { label: "Yes", detail: "text", detailLabel: "Who holds it, and the date" },
-              { label: "No — but indicated; will be developed", detail: "date", detailLabel: "By when" },
-            ] },
-          { id: "doc_suicide_notes", label: "Notes", type: "area", rows: 2, noneLabel: "No further notes.",
-            showIf: { field: "doc_suicide", notEquals: "Not applicable — not developmentally indicated at {childs} age" } },
-          { id: "doc_wrap", label: "WRAP plan", type: "radio", req: true,
-            hint: "WRAP is a self-directed adult wellness plan. A caregiver may hold one of their own.",
-            options: [
-              { label: "Not applicable — WRAP is a self-directed adult plan" },
-              { label: "Yes — the caregiver holds their own WRAP", detail: "text", detailLabel: "Whose, and where it is kept" },
-              { label: "No" },
-            ] },
-          { id: "doc_wrap_notes", label: "Notes", type: "area", rows: 2, noneLabel: "No further notes.",
-            showIf: { field: "doc_wrap", equals: "Yes — the caregiver holds their own WRAP" } },
-          { id: "doc_futures", label: "Futures plan — youth in transition", type: "radio", req: true,
-            options: [
-              { label: "Not applicable — {child} is a young child" },
-              { label: "Yes", detail: "text", detailLabel: "Who holds it, and the date" },
-              { label: "No" },
-            ] },
-          { id: "doc_pad", label: "Psychiatric advance directive (PAD)", type: "radio", req: true,
-            hint: "A PAD lets an adult direct their own psychiatric treatment if they later cannot communicate decisions. A minor cannot execute one; the legally responsible person directs {childs} treatment. North Carolina information: nrc-pad.org/states/north-carolina-resources.",
-            options: [
-              { label: "Not applicable — a minor cannot execute a PAD; the legally responsible person directs treatment" },
-              { label: "The caregiver holds their own PAD", detail: "text", detailLabel: "Whose, where it is kept, and who to give it to" },
-              { label: "No" },
-            ] },
-          { id: "doc_pad_notes", label: "Notes", type: "area", rows: 2, noneLabel: "No further notes.",
-            showIf: { field: "doc_pad", equals: "The caregiver holds their own PAD" } },
-          { id: "doc_advance", label: "Other advance directive or living will", type: "radio", req: true,
-            options: [
-              { label: "Not applicable — client is a minor" },
-              { label: "Yes", detail: "text", detailLabel: "What it is, and who holds it" },
-              { label: "No" },
-            ] },
-          { id: "doc_child", label: "Documents that do exist for {child} — upload each one to the Document Library", type: "check", req: true, group: "On file for this child",
-            options: [
-              { label: "Child First treatment plan" },
-              { label: "Person-Centered Plan (PCP)" },
-              { label: "IFSP — Early Intervention" },
-              { label: "IEP or preschool services plan" },
-              { label: "Child care or preschool behaviour support plan" },
-              { label: "DSS safety plan" },
-              { label: "Custody, visitation, or other court order" },
-              { label: "Foster or kinship placement plan" },
-              { label: "Medical action plan — asthma, seizure, allergy" },
-              { label: "Consent to release information" },
-              { label: "Release for child care or school" },
-              { label: "CCA or comprehensive assessment" },
-              { label: "SNIFF" },
-              { label: "Parent Questionnaire (PQ)" },
-              { label: "None on file yet" },
-              { label: "Other", detail: "text", detailLabel: "What else" },
-            ] },
-          { id: "doc_where", label: "Where the family keeps their copy of this plan", type: "text", req: true, family: true,
-            hint: "On the fridge. A photo on the phone. In the diaper bag. With the child-care provider. A plan in a drawer is a plan nobody reads in the moment." },
+            body: "Indicate whether {child} has each document. If Yes, upload it to the Document Library." },
+          { id: "p2_doc_behavior", label: "Individual Behavior Plan", type: "radio", req: true, group: "Additional Planning Documents", options: YN },
+          { id: "p2_doc_behavior_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_suicide", label: "Suicide Prevention and Intervention Plan", type: "radio", req: true, options: YN,
+            hint: "Usually not developmentally indicated under 5. Say so in Notes." },
+          { id: "p2_doc_suicide_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_wrap", label: "WRAP Plan", type: "radio", req: true, options: YN,
+            hint: "WRAP is a self-directed adult plan. Note the caregiver's own, if there is one." },
+          { id: "p2_doc_wrap_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_futures", label: "Futures Plan (youth in transition/young adult)", type: "radio", req: true, options: YN,
+            hint: "For youth in transition. Not applicable to a young child." },
+          { id: "p2_doc_futures_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_pad", label: "Psychiatric Advance Directive (PAD)", type: "radio", req: true, options: YN,
+            hint: "A minor cannot execute a PAD. The legally responsible person directs treatment." },
+          { id: "p2_doc_pad_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_advance", label: "Other Advance Directive or Living Will", type: "radio", req: true, options: YN,
+            hint: "A minor cannot execute one. Note that in Notes." },
+          { id: "p2_doc_advance_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+
+          { id: "p2_updated", label: "Did you update this page?", type: "radio", req: true, group: "Page 2", options: YN },
         ],
       },
 
-      // ─── 8. Review, signatures, and the family's copy ───
+      // ─── CFCR Crisis Plan, page 3 ───
       {
-        id: "review",
-        num: "8",
-        title: "Review, signatures, and the family's copy",
-        blurb: "The three CFCR page attestations, proof the plan was read with the caregiver in plain language, who has a copy, signatures, and what triggers the next review.",
+        id: "p3",
+        num: "3",
+        title: "Crisis Plan, page 3",
+        blurb: "General characteristics and preferences, and the ways others can help.",
+        cfcrPage: 3,
         fields: [
-          { id: "note_pages", type: "note",
-            title: "The three \"Did you update this page?\" questions.",
-            body: "CFCR asks it once per page. This app's sections map onto those pages: page 1 is Sections 1 and 2, page 2 is Sections 3, 6 and 7, page 3 is Sections 4 and 5. Answer all three here and the record shows the plan was reviewed, not just stored." },
-          { id: "cfcr_page1", label: "CFCR page 1 — did you update this page?", type: "radio", req: true, group: "Page attestations",
-            hint: "Address, living situation, communication, language, legally responsible person, insurance, diagnoses, medical and dental, medications, allergies, other providers. App Sections 1 and 2.",
-            options: YN },
-          { id: "cfcr_page2", label: "CFCR page 2 — did you update this page?", type: "radio", req: true,
-            hint: "Supports for the individual, crisis follow-up planning, additional planning documents. App Sections 3, 6 and 7.",
-            options: YN },
-          { id: "cfcr_page3", label: "CFCR page 3 — did you update this page?", type: "radio", req: true,
-            hint: "General characteristics and preferences, ways others can help. App Sections 4 and 5.",
-            options: YN },
-          { id: "reviewed_with", label: "Was this plan read through with the caregiver in plain language?", type: "radio", req: true, group: "With the family",
-            hint: "Not handed over — read together, out loud, in the order they would use it.",
-            options: [
-              { label: "Yes" },
-              { label: "Yes — with an interpreter" },
-              { label: "Partly — finish at the next visit", detail: "date", detailLabel: "When it will be finished" },
-              { label: "Not yet — schedule it", detail: "date", detailLabel: "When" },
-            ] },
-          { id: "copy_given", label: "Does the legally responsible person have a copy?", type: "radio", req: true,
-            options: [
-              { label: "Yes — printed" },
-              { label: "Yes — photo or digital copy on their phone" },
-              { label: "Yes — printed and on their phone" },
-              { label: "Not yet", detail: "date", detailLabel: "When they will get one" },
-            ] },
-          { id: "copy_others", label: "Copies shared with others, with consent", type: "check",
-            options: [
-              { label: "Child care or preschool" },
-              { label: "Pediatrician or medical home" },
-              { label: "DSS social worker" },
-              { label: "The other parent or caregiver household" },
-              { label: "A named support person" },
-              { label: "LME-MCO care manager" },
-              { label: "None yet" },
-              { label: "Other", detail: "text", detailLabel: "Who else" },
-            ] },
-          { id: "review_trigger", label: "This plan gets reviewed again if any of these happen", type: "check", req: true,
-            options: [
-              { label: "A crisis event" },
-              { label: "A placement change" },
-              { label: "A medication change" },
-              { label: "A new diagnosis" },
-              { label: "The family moves" },
-              { label: "Child care or school changes" },
-              { label: "A change in who is in the home" },
-              { label: "A change in custody or a court order" },
-              { label: "The treatment plan review" },
-              { label: "Other", detail: "text", detailLabel: "What else" },
-            ] },
-          { id: "sig_caregiver", label: "Signature — caregiver / legally responsible person", type: "text", req: true, group: "Signatures" },
-          { id: "sig_caregiver_date", label: "Date", type: "date", req: true },
-          { id: "sig_clinician", label: "Signature — clinician", type: "text", req: true },
-          { id: "sig_clinician_date", label: "Date", type: "date", req: true },
-          { id: "sig_frp", label: "Signature — Family Resource Partner", type: "text" },
-          { id: "sig_frp_date", label: "Date", type: "date" },
-          { id: "sig_supervisor", label: "Signature — supervisor", type: "text" },
-          { id: "sig_supervisor_date", label: "Date", type: "date" },
+          { id: "note_p3", type: "note", tone: "child",
+            body: "CFCR writes this page in the first person. It is written here in the third person, about {child}, because the caregiver and clinician are answering on {childs} behalf." },
+
+          { id: "p3_well", label: "What {child} is like when doing well", type: "area", req: true, rows: 7, max: 4000,
+            cfcr: "What I am like when I am feeling well",
+            group: "General Characteristics / Preferences", family: true,
+            hint: "A good day: how {child} interacts, appears and behaves." },
+          { id: "p3_early", label: "Early signs {child} is not doing well", type: "area", req: true, rows: 7, max: 4000,
+            cfcr: "Early signs that I am not doing well",
+            family: true,
+            hint: "Stress and triggers: anniversaries, holidays, noise, change in routine, unmet needs, isolation." },
+          { id: "p3_crisis", label: "What one may observe when {child} goes into crisis", type: "area", req: true, rows: 5, max: 1000,
+            cfcr: "Describe what one may observe when I go into crisis",
+            family: true,
+            hint: "Include what previous crises taught you." },
+
+          { id: "p3_prevention", label: "Crisis prevention and early intervention strategies that have been effective", type: "area", req: true, rows: 5, max: 1000,
+            group: "Ways That Others Can Help {child}", family: true,
+            hint: "What kept {child} out of crisis and out of restrictive settings. Name who {child} responds to best." },
+          { id: "p3_stabilization", label: "Strategies for crisis response and stabilization", type: "area", req: true, rows: 5, max: 1000,
+            family: true,
+            hint: "Natural and community supports first, least restrictive step first. Include back-up and respite." },
+          { id: "p3_worked", label: "What has worked well with {child}, and what has not", type: "area", req: true, rows: 5, max: 1000,
+            cfcr: "What has worked well with me...what has not worked well",
+            family: true,
+            hint: "Approaches, facilities, medications. How crisis staff should interact with {child}." },
+
+          { id: "p3_updated", label: "Did you update this page?", type: "radio", req: true, group: "Page 3", options: YN },
         ],
       },
     ];
 
-    // Five ranked support contacts. CFCR asks for a calling order, a consent
-    // flag, and an address; the last question is ours — a name that cannot
-    // actually take a child tonight belongs in a different row of the list.
-    function contactBlock(n, req) {
-      const ord = ["First call", "Second call", "Third call", "Fourth call", "Fifth call"][n - 1];
-      const p = "c" + n + "_";
-      const gate = n === 1 ? null : { field: "c" + (n - 1) + "_name", filled: true };
+    // CFCR's Supports for the Individual block, repeated up to five times.
+    // Supports 2 to 5 appear once the one before is named, which is what
+    // CFCR's "Add another support?" does.
+    function supportBlock(n, req) {
+      const p = "s" + n + "_";
+      const gate = n === 1 ? null : { field: "s" + (n - 1) + "_name", filled: true };
       const f = [
-        { id: p + "name", label: ord + " — name", type: "text", req: req, group: ord,
-          hint: n === 1 ? "Who the caregiver would actually call first." : undefined },
-        { id: p + "role", label: "Who is this?", type: "select", options: [
-            "Caregiver in the home", "Parent not in the home", "Grandparent", "Aunt or uncle",
-            "Other relative", "Family friend or neighbour", "Godparent",
-            "Child First clinician", "Child First FRP", "Therapist or other provider",
-            "Child care or preschool staff", "DSS social worker", "Faith community", "Other",
-          ] },
-        { id: p + "relationship", label: "Relationship to {child}", type: "text" },
+        { id: p + "order", label: "Calling order", type: "text", group: "Support " + n,
+          hint: n === 1 ? "1, 2, 3, in the order the family would call." : undefined },
+        { id: p + "who", label: "Who?", type: "text", hint: n === 1 ? "Relationship or role." : undefined },
+        { id: p + "name", label: "Name", type: "text", req: req },
+        { id: p + "address", label: "Address", type: "text" },
         { id: p + "phone", label: "Phone", type: "tel", req: req },
-        { id: p + "address", label: "Address, or how far away they are", type: "text" },
-        { id: p + "consent", label: "Valid consent to release information on file?", type: "radio",
-          options: [
-            { label: "Yes — on file" },
-            { label: "No — call them, but share nothing clinical" },
-            { label: "Requested, not yet signed", detail: "date", detailLabel: "Expected by" },
-            { label: "Not needed — legally responsible person" },
-          ] },
-        { id: p + "care", label: "Can they care for {child} in a crisis?", type: "radio",
-          options: [
-            { label: "Yes — right away" },
-            { label: "Yes — with some notice" },
-            { label: "No — support for the caregiver only" },
-            { label: "No — information only" },
-          ] },
+        { id: p + "consent", label: "Is there a valid consent to release?", type: "radio", options: YN },
       ];
       return gate ? f.map((x) => ({ ...x, showIf: x.showIf || gate })) : f;
     }
@@ -889,9 +354,8 @@
     // Helpers
     // ─────────────────────────────────────────────────────────────
 
-    // Option labels and stored answers always keep their raw {child} tokens.
-    // Only the display layer resolves them, so a child's name can be added or
-    // corrected at any point without rewriting answers already recorded.
+    // Stored answers keep their raw {child} tokens; only the display layer
+    // resolves them, so a name can be added or fixed at any point.
     function firstName(answers) {
       const n = (answers.child_name || "").trim();
       if (!n) return "";
@@ -908,29 +372,22 @@
       const fn = firstName(answers);
       const name = fn || "this child";
       const poss = fn ? fn + "’s" : "this child’s";
-      const age = (answers.child_age || "").trim() || "young";
-      const home = (answers.clinical_home || "").trim() || "the clinical home";
-      let out = src
-        .replace(/\{childs\}/g, poss)
-        .replace(/\{child\}/g, name)
-        .replace(/\{age\}/g, age)
-        .replace(/\{clinicalhome\}/g, home);
+      let out = src.replace(/\{childs\}/g, poss).replace(/\{child\}/g, name);
       if (/^\{child/.test(src)) out = out.charAt(0).toUpperCase() + out.slice(1);
       return out;
     }
 
     function isVisible(field, answers) {
       if (!field.showIf) return true;
-      const cond = field.showIf;
-      const v = answers[cond.field];
-      if (cond.filled !== undefined) {
+      const c = field.showIf;
+      const v = answers[c.field];
+      if (c.filled !== undefined) {
         const filled = typeof v === "string" ? v.trim().length > 0 : Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== "";
-        return cond.filled ? filled : !filled;
+        return c.filled ? filled : !filled;
       }
-      if (cond.equals !== undefined) return v === cond.equals;
-      if (cond.notEquals !== undefined) return v !== undefined && v !== cond.notEquals;
-      if (cond.includes !== undefined) return Array.isArray(v) && v.includes(cond.includes);
-      if (cond.inList !== undefined) return cond.inList.includes(v);
+      if (c.equals !== undefined) return v === c.equals;
+      if (c.notEquals !== undefined) return v !== undefined && v !== c.notEquals;
+      if (c.includes !== undefined) return Array.isArray(v) && v.includes(c.includes);
       return true;
     }
 
@@ -950,19 +407,7 @@
       if (v === undefined || v === null || v === "") return null;
       if (field.type === "check") {
         if (!Array.isArray(v) || v.length === 0) return null;
-        const parts = v.map((label) => {
-          const d = answers[field.id + "::" + label];
-          const shown = tok(label, answers);
-          return d && d.trim() ? shown + " — " + d.trim() : shown;
-        });
-        return parts.join("; ");
-      }
-      if (field.type === "radio") {
-        const opt = (field.options || []).find((o) => o.label === v);
-        const d = answers[field.id + "::" + v];
-        const shown = tok(v, answers);
-        if (opt && opt.detail && d && d.trim()) return shown + " — " + d.trim();
-        return shown;
+        return v.map((l) => tok(l, answers)).join("; ");
       }
       if (typeof v === "string") return v.trim();
       return String(v);
@@ -973,84 +418,65 @@
       return typeof v === "string" ? v.trim() : "";
     };
 
-    function fieldById(id) {
-      for (const sec of CRISIS_SECTIONS) {
-        const f = sec.fields.find((x) => x.id === id);
-        if (f) return f;
-      }
-      return null;
+    // Everything over a CFCR character limit, which CFCR would truncate.
+    function overLimit(answers) {
+      const out = [];
+      CRISIS_SECTIONS.forEach((sec) => {
+        sec.fields.forEach((f) => {
+          if (!f.max || !isVisible(f, answers)) return;
+          const len = val(answers, f.id).length;
+          if (len > f.max) out.push({ sec, f, len });
+        });
+      });
+      return out;
     }
 
-    function answerById(answers, id) {
-      const f = fieldById(id);
-      return f ? formatAnswer(f, answers) : null;
-    }
-
-    // The contacts, in calling order, as the family copy needs them.
-    function contactList(answers) {
+    function supportList(answers) {
       const out = [];
       for (let n = 1; n <= 5; n++) {
-        const name = val(answers, "c" + n + "_name");
+        const name = val(answers, "s" + n + "_name");
         if (!name) continue;
         out.push({
-          n,
-          name,
-          role: val(answers, "c" + n + "_role"),
-          relationship: val(answers, "c" + n + "_relationship"),
-          phone: val(answers, "c" + n + "_phone"),
-          address: val(answers, "c" + n + "_address"),
-          consent: val(answers, "c" + n + "_consent"),
-          care: val(answers, "c" + n + "_care"),
+          n, name,
+          order: val(answers, "s" + n + "_order"),
+          who: val(answers, "s" + n + "_who"),
+          phone: val(answers, "s" + n + "_phone"),
+          address: val(answers, "s" + n + "_address"),
+          consent: val(answers, "s" + n + "_consent"),
         });
       }
       return out;
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Record copy — the clinical text, section by section, each one
-    // labelled with the CFCR page it is keyed into.
+    // Record copy: CFCR's own labels, in CFCR's order, page by page,
+    // so it can be keyed straight down each screen.
     // ─────────────────────────────────────────────────────────────
     function summaryText(answers) {
-      const name = val(answers, "child_name") || "(child name not entered)";
       const lines = [
-        "CRISIS PLAN — CHILD (CFCR Crisis Plan rev. 10/23)",
-        "",
-        "This plan is written for the child named below. The caregiver completed it on",
-        "the child’s behalf; the child’s own preferences are recorded as the caregiver",
-        "reports them and the clinician observes them.",
-        "",
-        "Child: " + name,
-        "CFCR ID: " + (val(answers, "child_id") || "—"),
-        "Date of birth: " + (val(answers, "child_dob") || "—") + "   Age: " + (val(answers, "child_age") || "—"),
-        "Legally responsible person: " + (val(answers, "lrp_name") || "—") +
-          (val(answers, "lrp_relationship") ? " (" + val(answers, "lrp_relationship") + ")" : "") +
-          (val(answers, "lrp_phone") ? " — " + val(answers, "lrp_phone") : ""),
-        "Date of initial crisis plan: " + (val(answers, "plan_initial_date") || "—"),
-        "Date of last revision: " + (val(answers, "plan_revision_date") || "—"),
-        "Next review due: " + (val(answers, "plan_next_review") || "—"),
+        "CRISIS PLAN (CFCR rev. 10/23)",
+        "Child: " + (val(answers, "child_name") || "(not entered)") +
+          (val(answers, "child_age") ? ", " + val(answers, "child_age") : ""),
         "Generated: " + new Date().toLocaleString(),
         "",
       ];
       CRISIS_SECTIONS.forEach((sec) => {
-        const visible = sec.fields.filter((f) => isVisible(f, answers) && f.type !== "note");
-        const answered = visible.filter((f) => formatAnswer(f, answers) !== null);
+        if (sec.id === "child") return;
+        const answered = sec.fields.filter((f) => isVisible(f, answers) && formatAnswer(f, answers) !== null);
         if (answered.length === 0) return;
-        const head = "SECTION " + sec.num.toUpperCase() + ". " + tok(sec.title, answers).toUpperCase() +
-          (sec.cfcrPage ? "   [CFCR page " + sec.cfcrPage + "]" : "");
-        lines.push("=".repeat(70));
-        lines.push(head);
-        lines.push("=".repeat(70));
+        lines.push("=".repeat(66));
+        lines.push("CRISIS PLAN, PAGE " + sec.cfcrPage);
+        lines.push("=".repeat(66));
         let lastGroup = null;
         answered.forEach((f) => {
-          const a = formatAnswer(f, answers);
           if (f.group && f.group !== lastGroup) {
             lines.push("");
-            lines.push("[" + tok(f.group, answers) + "]");
+            lines.push("[" + tok(f.group, answers).toUpperCase() + "]");
             lastGroup = f.group;
           }
           lines.push("");
-          lines.push(tok(f.label, answers));
-          lines.push("  " + a.split("\n").join("\n  "));
+          lines.push(f.cfcr ? f.cfcr : tok(f.label, answers));
+          lines.push("  " + formatAnswer(f, answers).split("\n").join("\n  "));
         });
         lines.push("");
       });
@@ -1058,210 +484,140 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Family copy — the same plan in the caregiver's language, ordered
-    // the way a frightened adult reads at 2am: numbers, then people,
-    // then what to do, then what not to do.
+    // Family copy: the same CFCR answers, in the order someone reads
+    // them in a crisis. No extra questions, no clinical labels.
     // ─────────────────────────────────────────────────────────────
     function familyCardBlocks(answers) {
       const nm = firstName(answers) || "your child";
-      const contacts = contactList(answers);
+      const supports = supportList(answers);
       const blocks = [];
-
       const push = (title, items) => {
         const keep = items.filter((i) => i && i.body && String(i.body).trim());
         if (keep.length) blocks.push({ title, items: keep });
       };
 
-      let firstStep = answerById(answers, "after_hours");
-      if (firstStep === "A named support person from Section 3") {
-        const c1 = contacts[0];
-        firstStep = c1
-          ? "Call " + c1.name + (c1.phone ? " — " + c1.phone : "")
-          : "Call your first support person.";
-      }
-      push("If you need help right now", [
-        firstStep ? { label: "Start here", body: firstStep } : null,
-        val(answers, "crisis_mobile") ? { label: "Mobile crisis — any hour", body: val(answers, "crisis_mobile") } : null,
-        val(answers, "clinical_home_phone") ? { label: val(answers, "clinical_home") || "Clinical home", body: val(answers, "clinical_home_phone") } : null,
-        val(answers, "lme_phone") ? { label: val(answers, "lme") || "LME-MCO", body: val(answers, "lme_phone") } : null,
-        { label: "988 — call or text, any hour", body: "For " + nm + ", and for you. Calling 988 because you are at the end of your rope is using this plan correctly." },
-        { label: "911", body: "Only if someone is in immediate danger of being hurt." },
-        { label: "What to say when you call",
-          body: "“" + (val(answers, "child_age")
-            ? "I am calling about my child, who is " + val(answers, "child_age") + " old."
-            : "I am calling about my young child.") +
-            " There is a crisis plan on file with " + (val(answers, "clinical_home") || "our clinical home") + ".”" },
-      ]);
-
-      push("Call these people, in this order", [
-        ...contacts.map((c) => ({
-          label: c.n + ". " + c.name + (c.relationship ? " — " + c.relationship : c.role ? " — " + c.role : ""),
-          body: [c.phone, c.care === "Yes — right away" ? "Can come right away" : c.care === "Yes — with some notice" ? "Can come with some notice" : ""]
-            .filter(Boolean).join("  ·  "),
+      push("Who to call", [
+        ...supports.map((s) => ({
+          label: (s.order ? s.order + ". " : "") + s.name + (s.who ? ", " + s.who : ""),
+          body: s.phone,
         })),
-        answerById(answers, "do_not_contact") && val(answers, "do_not_contact") !== "No contact restrictions."
-          ? { label: "Please do not call", body: val(answers, "do_not_contact") } : null,
-      ]);
-
-      push("The early signs", [
-        { label: "What we notice first", body: val(answers, "early_signs_narrative") },
-        { label: "How we can tell " + nm + " is overwhelmed", body: val(answers, "comm_distress") },
-        { label: "Signs to watch for", body: answerById(answers, "early_signs") },
-      ]);
-
-      push("What helps " + nm, [
-        { label: "Try these, in this order", body: val(answers, "helps_order") },
-        { label: nm + " settles best for", body: val(answers, "helps_people") },
-        { label: "Things that help", body: val(answers, "helps_objects") },
-        { label: "Words that work", body: val(answers, "comm_calm") },
-      ]);
-
-      push("Please do not", [
-        { label: "What makes it worse", body: val(answers, "do_not_do") },
-        { label: "If someone new is helping " + nm, body: val(answers, "responder_guidance") },
-      ]);
-
-      push("How we know this is a crisis and not a hard day", [
-        { label: "", body: val(answers, "crisis_threshold") },
-      ]);
-
-      push("Things a doctor or responder needs to know", [
-        { label: "Allergies", body: val(answers, "allergies") },
-        { label: "Medicines", body: val(answers, "meds") },
-        { label: "Medicines that did not go well", body: val(answers, "meds_poor") },
-        { label: "Health conditions", body: val(answers, "med_conditions") },
-        { label: "Doctor", body: [val(answers, "pcp_name"), val(answers, "pcp_phone")].filter(Boolean).join(" — ") },
-        { label: "If we need a hospital", body: val(answers, "ed_preferred") },
-        { label: "Finding our home", body: val(answers, "home_access") },
-      ]);
-
-      push("If " + nm + " needs to go to the hospital", [
-        { label: "Who stays with " + nm, body: val(answers, "who_stays") },
-        { label: "Who coordinates everything", body: val(answers, "coord_primary") },
-        { label: "The other children", body: val(answers, "sibling_plan") },
+        val(answers, "p1_clinical_home")
+          ? { label: "First responder", body: val(answers, "p1_clinical_home") }
+          : null,
+        val(answers, "p1_lme_phone") ? { label: val(answers, "p1_lme") || "LME-MCO", body: val(answers, "p1_lme_phone") } : null,
+        { label: "988", body: "Call or text, any hour. For " + nm + ", and for you." },
+        { label: "911", body: "Only if someone is in immediate danger." },
       ]);
 
       push(nm.charAt(0).toUpperCase() + nm.slice(1) + " on a good day", [
-        { label: "This is what we are working back to", body: val(answers, "well") },
+        { label: "", body: val(answers, "p3_well") },
       ]);
 
-      push("And for you", [
-        { label: "What helps you stay steady", body: val(answers, "caregiver_own") },
-        { label: "Why this matters", body: "A child this young borrows the calm of the adult holding them. Looking after yourself in the middle of this is part of the plan, not a distraction from it." },
+      push("Early signs", [
+        { label: "", body: val(answers, "p3_early") },
+        { label: "How " + nm + " communicates", body: val(answers, "p1_comm_comments") },
+      ]);
+
+      push("What a crisis looks like", [
+        { label: "", body: val(answers, "p3_crisis") },
+      ]);
+
+      push("What helps", [
+        { label: "What keeps " + nm + " out of crisis", body: val(answers, "p3_prevention") },
+        { label: "What to do in a crisis", body: val(answers, "p3_stabilization") },
+        { label: "What has worked, and what has not", body: val(answers, "p3_worked") },
+      ]);
+
+      push("Things a doctor or responder needs to know", [
+        { label: "Allergies", body: val(answers, "p1_allergies") },
+        { label: "Medicines", body: val(answers, "p1_meds") },
+        { label: "Medicines that did not go well", body: val(answers, "p1_meds_poor") },
+        { label: "Health conditions", body: val(answers, "p1_medical") },
+      ]);
+
+      push("If " + nm + " goes to the hospital", [
+        { label: "Who stays with " + nm, body: val(answers, "p2_visit") },
+        { label: "Who coordinates care", body: val(answers, "p2_coordinator") },
+      ]);
+
+      push("Our numbers", [
+        { label: "Emergency", body: val(answers, "p1_emergency_phone") },
+        { label: "Second number", body: val(answers, "p1_alt_phone") },
+        { label: val(answers, "p1_lrp_name") || "Legally responsible person", body: val(answers, "p1_lrp_phone") },
       ]);
 
       return blocks;
     }
 
     function familyCardText(answers) {
-      const nm = firstName(answers) || "Your child";
+      const nm = firstName(answers);
       const lines = [
-        (firstName(answers) ? nm.toUpperCase() + "’S" : "YOUR CHILD’S") + " CRISIS PLAN — FAMILY COPY",
-        "",
-        "Age: " + (val(answers, "child_age") || "—") +
-          (val(answers, "plan_revision_date") || val(answers, "plan_initial_date")
-            ? "   Last updated: " + (val(answers, "plan_revision_date") || val(answers, "plan_initial_date"))
+        (nm ? nm.toUpperCase() + "’S" : "YOUR CHILD’S") + " CRISIS PLAN, FAMILY COPY",
+        (val(answers, "child_age") ? "Age " + val(answers, "child_age") + ". " : "") +
+          (val(answers, "p1_revision_date") || val(answers, "p1_initial_date")
+            ? "Updated " + (val(answers, "p1_revision_date") || val(answers, "p1_initial_date")) + "."
             : ""),
-        "Keep this somewhere you can find it fast." + (val(answers, "doc_where") ? " Ours lives: " + val(answers, "doc_where") : ""),
         "",
       ];
       familyCardBlocks(answers).forEach((b) => {
-        lines.push("—".repeat(46));
+        lines.push("-".repeat(46));
         lines.push(b.title.toUpperCase());
-        lines.push("—".repeat(46));
+        lines.push("-".repeat(46));
         b.items.forEach((i) => {
           if (i.label) {
             lines.push(i.label + ":");
             lines.push("  " + String(i.body).split("\n").join("\n  "));
           } else {
-            lines.push(String(i.body).split("\n").join("\n"));
+            lines.push(String(i.body));
           }
           lines.push("");
         });
       });
-      lines.push("This is your copy, in plain language. The full plan is in " + (firstName(answers) ? nm + "’s" : "your child’s") + " record.");
       return lines.join("\n");
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Readiness check — the things a Medicaid or LME-MCO reviewer
-    // looks for first, and the ones that make the plan usable at 2am.
+    // Readiness check: the CFCR fields a reviewer looks for first.
     // ─────────────────────────────────────────────────────────────
     function readinessChecks(answers) {
+      const supports = supportList(answers);
+      const withPhone = supports.filter((s) => s.phone);
+      const noConsent = supports.filter((s) => !s.consent);
+      const pages = ["p1_updated", "p2_updated", "p3_updated"].filter((id) => val(answers, id));
+      const over = overLimit(answers);
+      const p3 = ["p3_well", "p3_early", "p3_crisis", "p3_prevention", "p3_stabilization", "p3_worked"];
+      const p3Blank = p3.filter((id) => !val(answers, id));
       const blankAreas = [];
       CRISIS_SECTIONS.forEach((sec) => {
         sec.fields.forEach((f) => {
-          if (f.type !== "area") return;
-          if (!isVisible(f, answers)) return;
-          if (!isAnswered(f, answers)) blankAreas.push({ sec, f });
+          if (f.type === "area" && isVisible(f, answers) && !isAnswered(f, answers)) blankAreas.push({ sec, f });
         });
       });
 
-      const contacts = contactList(answers);
-      const withPhone = contacts.filter((c) => c.phone);
-      const missingConsent = contacts.filter((c) => !c.consent);
-      const nextReview = val(answers, "plan_next_review");
-      const ladder = Array.isArray(answers.ladder) ? answers.ladder : [];
-      const pages = ["cfcr_page1", "cfcr_page2", "cfcr_page3"].filter((id) => val(answers, id));
-
       return [
-        { ok: !!val(answers, "child_name") && !!val(answers, "child_age"),
-          label: "The child is named, with their age",
-          detail: "Every prompt on the form reads back to a name. Without it the plan is about “this child.”" },
-        { ok: !!val(answers, "lrp_name") && !!val(answers, "lrp_phone") && !!val(answers, "custody_status"),
-          label: "Legally responsible person and custody status recorded",
-          detail: "Who may consent for this child, and any court order that limits it." },
-        { ok: !!val(answers, "plan_initial_date"),
-          label: "Date of initial crisis plan",
-          detail: "CFCR asks for it at the top of page 1." },
-        { ok: !!nextReview,
-          label: "Next review date set",
-          detail: "A plan with no review date reads as a plan nobody came back to." },
-        { ok: pages.length === 3,
-          label: "All three CFCR page attestations answered",
-          detail: pages.length + " of 3 answered. CFCR asks “Did you update this page?” once per page." },
-        { ok: !!val(answers, "clinical_home_phone") && !!val(answers, "lme_phone") && !!val(answers, "crisis_mobile"),
-          label: "24/7 numbers present — clinical home, LME-MCO, mobile crisis",
-          detail: "Dialable numbers, not switchboards." },
-        { ok: withPhone.length >= 2,
-          label: "At least two ranked support contacts with phone numbers",
-          detail: withPhone.length + " recorded. CFCR asks for a calling order, and the order is the useful part." },
-        { ok: missingConsent.length === 0,
-          label: "Consent-to-release answered for every named contact",
-          detail: missingConsent.length === 0 ? "Every contact has a consent status." : missingConsent.length + " contact(s) with no consent status." },
-        { ok: !!val(answers, "do_not_contact"),
-          label: "Contact restrictions addressed",
-          detail: "“No restrictions” is an answer. A blank reads as nobody asked." },
-        { ok: !!val(answers, "allergies") && !!val(answers, "meds"),
+        { ok: !!val(answers, "p1_initial_date"), label: "Date of Initial Crisis Plan",
+          detail: "Top of page 1." },
+        { ok: pages.length === 3, label: "All three \"Did you update this page?\" answered",
+          detail: pages.length + " of 3." },
+        { ok: !!val(answers, "p1_clinical_home") && !!val(answers, "p1_lme") && !!val(answers, "p1_lme_phone"),
+          label: "Clinical home, LME-MCO and LME-MCO phone", detail: "All three are on page 1." },
+        { ok: !!val(answers, "p1_lrp_name") && !!val(answers, "p1_lrp_phone"),
+          label: "Legally responsible person, with a phone", detail: "Who can consent for {child}." },
+        { ok: withPhone.length >= 1, label: "At least one support with a name and a phone",
+          detail: withPhone.length + " recorded." },
+        { ok: noConsent.length === 0, label: "Consent to release answered for every support named",
+          detail: noConsent.length === 0 ? "" : noConsent.length + " with no answer." },
+        { ok: !!val(answers, "p1_allergies") && !!val(answers, "p1_meds"),
           label: "Allergies and medications recorded",
-          detail: "“No known allergies” and “no current medications” are answers. Blanks are not." },
-        { ok: ladder.length > 0,
-          label: "Least restrictive response steps documented",
-          detail: ladder.length + " step(s) agreed. Medicaid expects natural and community supports before emergency services." },
-        { ok: !!val(answers, "crisis_threshold"),
-          label: "The line between a crisis and a hard day is written down",
-          detail: "This is what keeps an ordinary hard Tuesday out of an emergency department." },
-        { ok: !!val(answers, "do_not_do") && !!val(answers, "responder_guidance"),
-          label: "What not to do, and how to approach this child",
-          detail: "The two fields a stranger needs before they walk into the room." },
-        { ok: !!val(answers, "debrief") && !!val(answers, "debrief_days"),
-          label: "Post-crisis review has a named owner and a timeframe",
-          detail: "A role is not an owner. Name the person and the number of days." },
-        { ok: !!val(answers, "reviewed_with"),
-          label: "Plan read through with the caregiver in plain language",
-          detail: "Read together, in the order they would use it — not handed over." },
-        { ok: !!val(answers, "copy_given") && val(answers, "copy_given").indexOf("Not yet") !== 0,
-          label: "Legally responsible person has a copy",
-          detail: "Print the family copy, or put a photo of it on their phone." },
-        { ok: !!val(answers, "sig_caregiver") && !!val(answers, "sig_caregiver_date") && !!val(answers, "sig_clinician") && !!val(answers, "sig_clinician_date"),
-          label: "Caregiver and clinician signatures, both dated",
-          detail: "An unsigned plan is a draft." },
-        { ok: blankAreas.length === 0,
-          label: "No blank narrative fields",
-          detail: blankAreas.length === 0
-            ? "Every narrative field has something in it."
-            : blankAreas.length + " blank. A reviewer reads a blank as work not done; most of these carry a one-tap “nothing to report” filler.",
-          blanks: blankAreas },
+          detail: "\"No known allergies\" and \"no current medications\" are answers." },
+        { ok: p3Blank.length === 0, label: "Page 3 complete",
+          detail: p3Blank.length + " of 6 narrative fields blank." },
+        { ok: over.length === 0, label: "Nothing over the CFCR character limit",
+          detail: over.length === 0 ? "" : over.map((o) => o.len + "/" + o.f.max).join(", ") + ". CFCR will cut the rest.",
+          jump: over.map((o) => ({ sec: o.sec, f: o.f })) },
+        { ok: blankAreas.length === 0, label: "No blank text areas",
+          detail: blankAreas.length === 0 ? "" : blankAreas.length + " blank.",
+          jump: blankAreas },
       ];
     }
 
@@ -1269,10 +625,8 @@
     // Small pieces
     // ─────────────────────────────────────────────────────────────
     const Eyebrow = ({ children, dark }) => (
-      <div
-        className="cib-body text-xs font-bold uppercase tracking-widest mb-2"
-        style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}
-      >
+      <div className="cib-body text-xs font-bold uppercase tracking-widest mb-2"
+        style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}>
         {children}
       </div>
     );
@@ -1282,26 +636,21 @@
     const FamilyTag = () => (
       <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ml-2 align-middle"
         style={{ background: "rgba(127,160,140,0.22)", color: "var(--moss)", letterSpacing: "0.1em" }}
-        title="This answer is printed on the family's plain-language copy">
+        title="Also printed on the family copy">
         Family copy
       </span>
     );
 
-    // A standing reminder of whose plan this is. It sits above every
-    // section, because the person the plan is for is not in the room
-    // answering for themselves.
     function ChildBanner({ answers }) {
       const nm = val(answers, "child_name");
       const age = val(answers, "child_age");
       return (
-        <div className="rounded-2xl px-4 py-3 mb-6" style={{ background: "rgba(242,182,83,0.12)", border: "1px solid rgba(242,182,83,0.4)" }}>
-          <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--lamplight)", letterSpacing: "0.12em" }}>
-            This plan is for the child
-          </div>
+        <div className="rounded-2xl px-4 py-2 mb-6" style={{ background: "rgba(242,182,83,0.12)", border: "1px solid rgba(242,182,83,0.4)" }}>
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--lamplight)", letterSpacing: "0.12em" }}>
+            For the child
+          </span>
           <div className="text-sm" style={{ color: "var(--cream-on-dark)" }}>
-            {nm
-              ? <span><strong>{nm}</strong>{age ? ", " + age : ""}. The caregiver is answering on {firstName(answers) || "their"}{firstName(answers) ? "’s" : ""} behalf.</span>
-              : <span>Add the child&rsquo;s name in Section i and every question will use it.</span>}
+            {nm ? <span><strong>{nm}</strong>{age ? ", " + age : ""}</span> : <span>Add the name in Section i.</span>}
           </div>
         </div>
       );
@@ -1309,65 +658,38 @@
 
     function NoteView({ field, answers }) {
       const tone = field.tone === "child"
-        ? { bg: "rgba(127,160,140,0.14)", border: "rgba(127,160,140,0.45)", label: "var(--moss)" }
-        : field.tone === "alert"
-          ? { bg: "rgba(180,85,46,0.14)", border: "rgba(196,122,137,0.5)", label: "var(--rose-soft)" }
-          : { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.16)", label: "var(--soft-on-dark)" };
+        ? { bg: "rgba(127,160,140,0.14)", border: "rgba(127,160,140,0.45)" }
+        : { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.16)" };
       return (
         <div className="rounded-2xl p-4 mb-8" style={{ background: tone.bg, border: "1px solid " + tone.border }}>
-          <div className="text-sm font-bold mb-1" style={{ color: tone.label }}>{tok(field.title, answers)}</div>
           <p className="text-sm leading-relaxed" style={{ color: "var(--cream-on-dark)" }}>{tok(field.body, answers)}</p>
         </div>
       );
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Title card shown at the start of the plan
-    // ─────────────────────────────────────────────────────────────
-    function AssessmentIntro({ eyebrow, title, subtitle, purpose, meta, accent, beginLabel, backLabel, onBegin, onBack }) {
+    function AssessmentIntro({ eyebrow, title, subtitle, purpose, meta, beginLabel, backLabel, onBegin, onBack }) {
       return (
         <div className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
           <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 flex flex-col flex-1">
-            <button
-              onClick={onBack}
-              className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white"
-              style={{ color: "var(--soft-on-dark)" }}
-            >
+            <button onClick={onBack} className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
               &larr; {backLabel || "Back"}
             </button>
-
             <div className="flex-1 flex flex-col justify-center py-10 cib-fade">
               <div className="rounded-3xl p-7" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}>
-                {eyebrow ? (
-                  <div className="cib-body text-xs font-bold uppercase tracking-widest mb-3" style={{ color: accent || "var(--lamplight)", letterSpacing: "0.14em" }}>
-                    {eyebrow}
-                  </div>
-                ) : null}
+                <div className="cib-body text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--lamplight)", letterSpacing: "0.14em" }}>{eyebrow}</div>
                 <h1 className="cib-display text-3xl leading-tight mb-2" style={{ color: "var(--cream-on-dark)" }}>{title}</h1>
-                {subtitle ? <p className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{subtitle}</p> : null}
-
+                <p className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{subtitle}</p>
                 <div className="h-px w-full my-5" style={{ background: "rgba(255,255,255,0.14)" }} />
-
                 <p className="text-base leading-relaxed" style={{ color: "var(--cream-on-dark)" }}>{purpose}</p>
-
-                {Array.isArray(meta) && meta.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-6">
-                    {meta.map((m) => (
-                      <span key={m} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.09)", color: "var(--soft-on-dark)" }}>
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2 mt-6">
+                  {meta.map((m) => (
+                    <span key={m} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.09)", color: "var(--soft-on-dark)" }}>{m}</span>
+                  ))}
+                </div>
               </div>
             </div>
-
-            <button
-              onClick={onBegin}
-              className="w-full rounded-2xl py-4 text-lg font-bold transition-transform active:scale-[0.98]"
-              style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}
-            >
-              {beginLabel || "Begin"}
+            <button onClick={onBegin} className="w-full rounded-2xl py-4 text-lg font-bold transition-transform active:scale-[0.98]" style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
+              {beginLabel}
             </button>
           </div>
         </div>
@@ -1375,9 +697,9 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Field renderer (dark fill mode)
+    // Field renderer
     // ─────────────────────────────────────────────────────────────
-    function FieldView({ field, answers, setField, setDetail }) {
+    function FieldView({ field, answers, setField }) {
       const value = answers[field.id];
       const inputStyle = { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" };
 
@@ -1388,37 +710,48 @@
           <div className="text-base font-bold leading-snug" style={{ color: "var(--cream-on-dark)" }}>
             {tok(field.label, answers)}{field.req ? <Req /> : null}{field.family ? <FamilyTag /> : null}
           </div>
+          {field.cfcr && (
+            <p className="text-xs mt-1 italic" style={{ color: "var(--moss)" }}>CFCR: {field.cfcr}</p>
+          )}
           {field.hint && (
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: "var(--soft-on-dark)" }}>{tok(field.hint, answers)}</p>
+            <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--soft-on-dark)" }}>{tok(field.hint, answers)}</p>
           )}
         </div>
       );
 
-      // One tap to say "there is nothing here" — because a blank field in a
-      // Medicaid record reads as a question nobody asked.
+      // A blank field in a Medicaid record reads as a question nobody asked.
       const noneChip = field.noneLabel && !(typeof value === "string" && value.trim())
         ? (
-          <button
-            onClick={() => setField(field.id, tok(field.noneLabel, answers))}
+          <button onClick={() => setField(field.id, tok(field.noneLabel, answers))}
             className="mt-2 text-xs font-bold px-3 py-2 rounded-xl transition-colors hover:bg-white/10"
-            style={{ background: "rgba(255,255,255,0.05)", color: "var(--soft-on-dark)", border: "1px dashed rgba(255,255,255,0.25)" }}
-          >
-            Nothing to report &rarr; {tok(field.noneLabel, answers)}
+            style={{ background: "rgba(255,255,255,0.05)", color: "var(--soft-on-dark)", border: "1px dashed rgba(255,255,255,0.25)" }}>
+            Nothing to report
           </button>
         ) : null;
+
+      // CFCR truncates at the limit, so the count is worth seeing while typing.
+      const counter = field.max
+        ? (() => {
+            const len = (typeof value === "string" ? value : "").length;
+            const over = len > field.max;
+            return (
+              <div className="text-xs mt-1 text-right" style={{ color: over ? "var(--lamplight)" : "var(--soft-on-dark)" }}>
+                {len} / {field.max}{over ? " over" : ""}
+              </div>
+            );
+          })()
+        : null;
 
       if (field.type === "text" || field.type === "date" || field.type === "tel") {
         return (
           <div className="mb-8">
             {labelBlock}
-            <input
-              type={field.type === "tel" ? "tel" : field.type}
+            <input type={field.type === "tel" ? "tel" : field.type}
               inputMode={field.type === "tel" ? "tel" : undefined}
               value={typeof value === "string" ? value : ""}
               onChange={(e) => setField(field.id, e.target.value)}
               className="w-full rounded-2xl px-4 py-3 text-base focus:outline-none"
-              style={{ ...inputStyle, colorScheme: "dark" }}
-            />
+              style={{ ...inputStyle, colorScheme: "dark" }} />
             {noneChip}
           </div>
         );
@@ -1428,14 +761,12 @@
         return (
           <div className="mb-8">
             {labelBlock}
-            <select
-              value={typeof value === "string" ? value : ""}
+            <select value={typeof value === "string" ? value : ""}
               onChange={(e) => setField(field.id, e.target.value)}
               className="w-full rounded-2xl px-4 py-3 text-base focus:outline-none"
-              style={{ ...inputStyle, colorScheme: "dark" }}
-            >
+              style={{ ...inputStyle, colorScheme: "dark" }}>
               <option value="">Select&hellip;</option>
-              {field.options.map((o) => <option key={o} value={o}>{tok(o, answers)}</option>)}
+              {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
         );
@@ -1445,14 +776,13 @@
         return (
           <div className="mb-8">
             {labelBlock}
-            <textarea
-              value={typeof value === "string" ? value : ""}
+            <textarea value={typeof value === "string" ? value : ""}
               onChange={(e) => setField(field.id, e.target.value)}
               rows={field.rows || 4}
               placeholder="Type here&hellip;"
               className="w-full rounded-2xl p-4 text-base resize-y focus:outline-none"
-              style={inputStyle}
-            />
+              style={inputStyle} />
+            {counter}
             {noneChip}
           </div>
         );
@@ -1466,46 +796,13 @@
               {field.options.map((opt) => {
                 const selected = value === opt.label;
                 return (
-                  <div key={opt.label}>
-                    <button
-                      onClick={() => setField(field.id, opt.label)}
-                      className="w-full rounded-2xl py-3 px-4 text-left text-sm font-bold transition-all active:scale-[0.99]"
-                      style={selected
-                        ? { background: "var(--lamplight)", color: "var(--spruce-deep)", boxShadow: "0 0 0 3px rgba(242,182,83,0.35)" }
-                        : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}
-                    >
-                      {tok(opt.label, answers)}
-                    </button>
-                    {selected && opt.detail === "text" && (
-                      <input
-                        value={answers[field.id + "::" + opt.label] || ""}
-                        onChange={(e) => setDetail(field.id, opt.label, e.target.value)}
-                        placeholder={tok(opt.detailLabel || "Please describe", answers)}
-                        className="w-full rounded-2xl px-4 py-3 mt-2 text-sm focus:outline-none"
-                        style={{ ...inputStyle, border: "1px solid rgba(242,182,83,0.5)" }}
-                      />
-                    )}
-                    {selected && opt.detail === "date" && (
-                      <input
-                        type="date"
-                        value={answers[field.id + "::" + opt.label] || ""}
-                        onChange={(e) => setDetail(field.id, opt.label, e.target.value)}
-                        aria-label={tok(opt.detailLabel || "Date", answers)}
-                        className="w-full rounded-2xl px-4 py-3 mt-2 text-sm focus:outline-none"
-                        style={{ ...inputStyle, border: "1px solid rgba(242,182,83,0.5)", colorScheme: "dark" }}
-                      />
-                    )}
-                    {selected && opt.detail === "area" && (
-                      <textarea
-                        value={answers[field.id + "::" + opt.label] || ""}
-                        onChange={(e) => setDetail(field.id, opt.label, e.target.value)}
-                        placeholder={tok(opt.detailLabel || "Please describe", answers)}
-                        rows={3}
-                        className="w-full rounded-2xl p-4 mt-2 text-sm resize-y focus:outline-none"
-                        style={{ ...inputStyle, border: "1px solid rgba(242,182,83,0.5)" }}
-                      />
-                    )}
-                  </div>
+                  <button key={opt.label} onClick={() => setField(field.id, opt.label)}
+                    className="w-full rounded-2xl py-3 px-4 text-left text-sm font-bold transition-all active:scale-[0.99]"
+                    style={selected
+                      ? { background: "var(--lamplight)", color: "var(--spruce-deep)", boxShadow: "0 0 0 3px rgba(242,182,83,0.35)" }
+                      : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                    {tok(opt.label, answers)}
+                  </button>
                 );
               })}
             </div>
@@ -1526,31 +823,17 @@
               {field.options.map((opt) => {
                 const checked = arr.includes(opt.label);
                 return (
-                  <div key={opt.label}>
-                    <button
-                      onClick={() => toggle(opt.label)}
-                      className="w-full rounded-2xl py-3 px-4 text-left text-sm font-bold transition-all active:scale-[0.99] flex items-start gap-3"
+                  <button key={opt.label} onClick={() => toggle(opt.label)}
+                    className="w-full rounded-2xl py-3 px-4 text-left text-sm font-bold transition-all active:scale-[0.99] flex items-start gap-3"
+                    style={checked
+                      ? { background: "var(--moss)", color: "var(--spruce-deep)" }
+                      : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                    <span className="flex-shrink-0 w-5 h-5 rounded-md mt-0.5 flex items-center justify-center text-xs"
                       style={checked
-                        ? { background: "var(--moss)", color: "var(--spruce-deep)" }
-                        : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}
-                    >
-                      <span className="flex-shrink-0 w-5 h-5 rounded-md mt-0.5 flex items-center justify-center text-xs"
-                        style={checked
-                          ? { background: "var(--spruce-deep)", color: "var(--lamplight)" }
-                          : { border: "2px solid rgba(255,255,255,0.35)", color: "transparent" }}
-                      >&#10003;</span>
-                      <span>{tok(opt.label, answers)}</span>
-                    </button>
-                    {checked && opt.detail === "text" && (
-                      <input
-                        value={answers[field.id + "::" + opt.label] || ""}
-                        onChange={(e) => setDetail(field.id, opt.label, e.target.value)}
-                        placeholder={tok(opt.detailLabel || "Please specify", answers)}
-                        className="w-full rounded-2xl px-4 py-3 mt-2 text-sm focus:outline-none"
-                        style={{ ...inputStyle, border: "1px solid rgba(127,160,140,0.6)" }}
-                      />
-                    )}
-                  </div>
+                        ? { background: "var(--spruce-deep)", color: "var(--lamplight)" }
+                        : { border: "2px solid rgba(255,255,255,0.35)", color: "transparent" }}>&#10003;</span>
+                    <span>{tok(opt.label, answers)}</span>
+                  </button>
                 );
               })}
             </div>
@@ -1562,34 +845,26 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // The family's copy — light, plain, and built to be printed and
-    // stuck on a fridge.
+    // The family copy, built to be printed
     // ─────────────────────────────────────────────────────────────
     function FamilyCard({ answers }) {
       const nm = firstName(answers);
       const blocks = familyCardBlocks(answers);
-      const updated = val(answers, "plan_revision_date") || val(answers, "plan_initial_date");
+      const updated = val(answers, "p1_revision_date") || val(answers, "p1_initial_date");
       return (
         <div id="familycard" className="max-w-md mx-auto px-5 py-8" style={{ background: "var(--card)" }}>
-          <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--moss)", letterSpacing: "0.14em" }}>
-            Family copy
-          </div>
+          <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--moss)", letterSpacing: "0.14em" }}>Family copy</div>
           <h1 className="cib-display text-3xl leading-tight mb-1" style={{ color: "var(--spruce)" }}>
             {nm ? nm + "’s crisis plan" : "Your child’s crisis plan"}
           </h1>
-          <p className="text-sm mb-1" style={{ color: "var(--ink-soft)" }}>
-            {val(answers, "child_age") ? "Age " + val(answers, "child_age") + "." : ""}
-            {updated ? " Last updated " + updated + "." : ""}
-          </p>
           <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
-            Keep this where you can find it fast.
-            {val(answers, "doc_where") ? " Ours lives: " + val(answers, "doc_where") + "." : ""}
+            {val(answers, "child_age") ? "Age " + val(answers, "child_age") + ". " : ""}
+            {updated ? "Updated " + updated + "." : ""}
           </p>
 
           {blocks.length === 0 && (
             <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
-              Nothing to print yet. The family copy fills in from the answers marked
-              &ldquo;Family copy&rdquo; as you work through the plan.
+              Nothing to print yet. This page fills in from the answers tagged &ldquo;Family copy&rdquo;.
             </p>
           )}
 
@@ -1599,11 +874,7 @@
               <h2 className="cib-display text-lg leading-snug mb-3" style={{ color: "var(--spruce)" }}>{b.title}</h2>
               {b.items.map((i, ii) => (
                 <div key={ii} className="py-2" style={ii < b.items.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
-                  {/* Not uppercased: these labels carry people's names and phone numbers,
-                      and a caregiver should not have to read their own mother's name in caps. */}
-                  {i.label ? (
-                    <div className="text-sm font-bold mb-1" style={{ color: "var(--ink-soft)" }}>{i.label}</div>
-                  ) : null}
+                  {i.label ? <div className="text-sm font-bold mb-1" style={{ color: "var(--ink-soft)" }}>{i.label}</div> : null}
                   <div className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: "var(--ink)" }}>{i.body}</div>
                 </div>
               ))}
@@ -1611,8 +882,7 @@
           ))}
 
           <p className="text-xs mt-6 pt-4" style={{ color: "var(--ink-soft)", borderTop: "1px solid var(--mist)" }}>
-            This is your copy, in plain language. The full plan is in {nm ? nm + "’s" : "your child’s"} record.
-            If anything here is wrong or out of date, tell us and we will change it.
+            Your copy, in plain language. The full plan is in {nm ? nm + "’s" : "your child’s"} record.
           </p>
         </div>
       );
@@ -1631,7 +901,6 @@
       const loadedRef = useRef(false);
       const topRef = useRef(null);
 
-      // Load saved answers
       useEffect(() => {
         let alive = true;
         (async () => {
@@ -1655,7 +924,6 @@
         return () => { alive = false; };
       }, []);
 
-      // Autosave answers
       useEffect(() => {
         if (!loadedRef.current) return;
         let cancelled = false;
@@ -1675,11 +943,9 @@
       }, [answers]);
 
       const setField = (id, v) => setAnswers((a) => ({ ...a, [id]: v }));
-      const setDetail = (id, label, v) => setAnswers((a) => ({ ...a, [id + "::" + label]: v }));
 
       const answeredAny = Object.keys(answers).length > 0;
       const totalRequired = CRISIS_SECTIONS.reduce((n, sec) => n + sec.fields.filter((f) => f.req).length, 0);
-
       const section = CRISIS_SECTIONS[secIdx];
       const visibleFields = section ? section.fields.filter((f) => isVisible(f, answers)) : [];
       const progress = ((secIdx + 1) / CRISIS_SECTIONS.length) * 100;
@@ -1687,16 +953,12 @@
       const sectionCompletion = (sec) => {
         const vis = sec.fields.filter((f) => isVisible(f, answers) && f.req);
         if (vis.length === 0) return 1;
-        const done = vis.filter((f) => isAnswered(f, answers)).length;
-        return done / vis.length;
+        return vis.filter((f) => isAnswered(f, answers)).length / vis.length;
       };
 
       const scrollTop = () => {
-        if (topRef.current && topRef.current.scrollIntoView) {
-          topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else {
-          window.scrollTo(0, 0);
-        }
+        if (topRef.current && topRef.current.scrollIntoView) topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        else window.scrollTo(0, 0);
       };
 
       const goNext = () => {
@@ -1765,44 +1027,21 @@
               </a>
 
               <Eyebrow>Child First Clinical Record</Eyebrow>
-              <h1 className="cib-display text-3xl leading-tight mb-2" style={{ color: "var(--spruce)" }}>
-                Crisis Plan for a Young Child
-              </h1>
+              <h1 className="cib-display text-3xl leading-tight mb-2" style={{ color: "var(--spruce)" }}>Crisis Plan</h1>
               <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
-                The CFCR Crisis Plan (rev. 10/23), rewritten for a client who is three years old
-                and cannot fill out a form about themselves. Work section by section &mdash;
-                everything autosaves on this device so you can stop and come back.
+                The CFCR Crisis Plan (rev. 10/23), field for field, in CFCR's order, worded for a
+                young child. Autosaves on this device.
                 {saveState === "saved" && <span style={{ color: "var(--moss)" }}> Saved.</span>}
                 {saveState === "off" && <span> Saving is off here.</span>}
               </p>
 
-              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--lamplight)" }}>
-                <Eyebrow>Whose plan this is</Eyebrow>
-                <p className="text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
-                  The state form is written in the first person &mdash; <em>what I am like when I am
-                  feeling well</em>, <em>who will visit me in hospital</em>. A child in Child First
-                  cannot answer that, so every prompt here is rewritten in the third person and
-                  names the child out loud. The adults in the room are answering
-                  <strong> on the child&rsquo;s behalf</strong>, and the child&rsquo;s own
-                  preferences are recorded as the caregiver reports them and the clinician
-                  observes them. Caregiver needs appear only where they change what happens to
-                  the child.
-                </p>
-              </div>
-
               <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
                 <Eyebrow>Before you begin</Eyebrow>
-                <p className="text-xs mb-2 leading-relaxed" style={{ color: "var(--ink-soft)" }}>
-                  Fields marked <span style={{ color: "var(--lamplight-deep)" }}>*</span> are
-                  required in CFCR. Narrative fields carry a one-tap
-                  &ldquo;nothing to report&rdquo; filler, because a reviewer reads a blank as a
-                  question nobody asked. Answers marked <strong>Family copy</strong> are printed
-                  on the caregiver&rsquo;s plain-language page, so write those in the
-                  caregiver&rsquo;s own words.
-                </p>
-                <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
-                  <strong>{CRISIS_SECTIONS.length} sections</strong> &middot; {totalRequired} required
-                  fields &middot; two outputs: the record copy for CFCR and the family copy for the fridge.
+                <p className="text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
+                  Same fields as CFCR, so the record copy reads straight down each page. Where a
+                  prompt is reworded for a child, CFCR's own wording shows under it.
+                  <span style={{ color: "var(--lamplight-deep)" }}> *</span> marks a required field,
+                  and character limits are counted as you type.
                 </p>
               </div>
 
@@ -1811,12 +1050,9 @@
                 {CRISIS_SECTIONS.map((sec, i) => {
                   const c = sectionCompletion(sec);
                   return (
-                    <button
-                      key={sec.id}
-                      onClick={() => { setSecIdx(i); setMode("fill"); }}
+                    <button key={sec.id} onClick={() => { setSecIdx(i); setMode("fill"); }}
                       className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.99] hover:border-[#7FA08C]"
-                      style={{ background: "var(--card)", border: "1px solid var(--mist)" }}
-                    >
+                      style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <span className="cib-display text-lg w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
@@ -1826,9 +1062,6 @@
                           <div>
                             <div className="font-bold text-sm" style={{ color: "var(--spruce)" }}>{tok(sec.title, answers)}</div>
                             <div className="text-xs" style={{ color: "var(--ink-soft)" }}>{tok(sec.blurb, answers)}</div>
-                            {sec.cfcrPage && (
-                              <div className="text-xs mt-1" style={{ color: "var(--moss)" }}>CFCR page {sec.cfcrPage}</div>
-                            )}
                           </div>
                         </div>
                         {c >= 1
@@ -1843,19 +1076,15 @@
               </div>
 
               <div className="flex gap-3">
-                <button
-                  onClick={() => { setSecIdx(0); setMode("intro"); }}
+                <button onClick={() => { setSecIdx(0); setMode("intro"); }}
                   className="flex-1 rounded-2xl py-4 text-base font-bold transition-transform active:scale-[0.98]"
-                  style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}
-                >
+                  style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
                   {answeredAny ? "Resume" : "Start"} crisis plan
                 </button>
                 {answeredAny && (
-                  <button
-                    onClick={() => setMode("done")}
+                  <button onClick={() => setMode("done")}
                     className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-[#FAF8F5]"
-                    style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}
-                  >
+                    style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
                     Review &amp; copy
                   </button>
                 )}
@@ -1873,11 +1102,7 @@
               )}
 
               <div className="text-center text-xs mt-8 pt-6" style={{ color: "var(--ink-soft)", borderTop: "1px solid var(--mist)" }}>
-                <p>
-                  A recording convenience only. The plan in the clinical record is the plan.
-                  Clinical judgement, CFCR data entry, and every crisis decision remain the
-                  responsibility of the clinician.
-                </p>
+                <p>A recording convenience only. The plan in the clinical record is the plan.</p>
               </div>
             </div>
           </div>
@@ -1889,11 +1114,10 @@
         return (
           <AssessmentIntro
             eyebrow="Child First Clinical Record"
-            title="Crisis Plan for a Young Child"
-            subtitle="CFCR Crisis Plan, rev. 10/23 &mdash; written for the child"
-            purpose="A crisis plan for a child under five is not a plan the client can follow. It is a set of instructions for the adults: what this child is like on a good day, the early signs, what helps and in what order, what makes it worse, who to call first, and where the line is between a hard day and a crisis. The child is the client. The caregiver answers on their behalf."
-            meta={[CRISIS_SECTIONS.length + " sections", totalRequired + " required fields", "Record copy + family copy", "Autosaves on this device"]}
-            accent="var(--lamplight)"
+            title="Crisis Plan"
+            subtitle="CFCR Crisis Plan, rev. 10/23"
+            purpose="CFCR writes this plan in the first person, for an adult planning their own crisis. The client here is a young child, so the same fields are worded in the third person and name the child. Nothing is added to the form and nothing is dropped."
+            meta={["3 CFCR pages", totalRequired + " required fields", "Record copy + family copy"]}
             beginLabel={answeredAny ? "Continue" : "Begin"}
             backLabel="Back to sections"
             onBegin={() => setMode("fill")}
@@ -1914,8 +1138,7 @@
                     &larr; Sections
                   </button>
                   <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}>
-                    Section {section.num} &middot; {secIdx + 1} of {CRISIS_SECTIONS.length}
-                    {section.cfcrPage ? " · CFCR p." + section.cfcrPage : ""}
+                    {section.cfcrPage ? "CFCR page " + section.cfcrPage : "Setup"}
                     {saveState === "saved" && <span style={{ color: "var(--moss)" }}> &middot; Saved</span>}
                   </span>
                 </div>
@@ -1927,10 +1150,7 @@
               <ChildBanner answers={answers} />
 
               <div key={section.id} className="cib-fade flex-1">
-                <Eyebrow dark>Section {section.num}</Eyebrow>
-                <h1 className="cib-display text-2xl leading-snug mb-2" style={{ color: "var(--cream-on-dark)" }}>
-                  {tok(section.title, answers)}
-                </h1>
+                <h1 className="cib-display text-2xl leading-snug mb-2" style={{ color: "var(--cream-on-dark)" }}>{tok(section.title, answers)}</h1>
                 <p className="text-sm mb-8" style={{ color: "var(--soft-on-dark)" }}>{tok(section.blurb, answers)}</p>
 
                 {visibleFields.map((f) => {
@@ -1943,7 +1163,7 @@
                           <Eyebrow dark>{tok(f.group, answers)}</Eyebrow>
                         </div>
                       )}
-                      <FieldView field={f} answers={answers} setField={setField} setDetail={setDetail} />
+                      <FieldView field={f} answers={answers} setField={setField} />
                     </React.Fragment>
                   );
                 })}
@@ -1953,8 +1173,8 @@
                 <button onClick={goBack} className="rounded-2xl py-4 px-6 text-base font-bold transition-colors hover:bg-white/10" style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
                   Back
                 </button>
-                <button onClick={goNext} className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-opacity-90" style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
-                  {secIdx + 1 >= CRISIS_SECTIONS.length ? "Finish & review" : "Next section"}
+                <button onClick={goNext} className="flex-1 rounded-2xl py-4 text-base font-bold" style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
+                  {secIdx + 1 >= CRISIS_SECTIONS.length ? "Finish & review" : "Next"}
                 </button>
               </div>
             </div>
@@ -1970,11 +1190,8 @@
               <button onClick={() => setMode("done")} className="text-xs font-bold uppercase tracking-wider mb-4 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
                 &larr; Back to review
               </button>
-              <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--ink-soft)" }}>
-                This is the page that goes home. It says the same things as the record copy, in the
-                caregiver&rsquo;s language, in the order someone reads at 2am: the numbers, then the
-                people, then what to try, then what not to do. Read it out loud with them before
-                they leave, and give them a copy on paper and a photo on their phone.
+              <p className="text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
+                The same CFCR answers, reordered for the caregiver. No extra questions.
               </p>
             </div>
 
@@ -2013,18 +1230,13 @@
               {firstName(answers) ? firstName(answers) + "’s crisis plan" : "Crisis plan"}
             </h1>
             <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
-              {val(answers, "child_name") ? <span><strong>{val(answers, "child_name")}</strong>{val(answers, "child_age") ? ", " + val(answers, "child_age") : ""} &middot; </span> : null}
               {unansweredRequired.length === 0
                 ? "All required fields are answered."
-                : unansweredRequired.length + " required field" + (unansweredRequired.length === 1 ? "" : "s") + " still blank (marked *)."}
+                : unansweredRequired.length + " required field" + (unansweredRequired.length === 1 ? "" : "s") + " still blank."}
             </p>
 
             <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid " + (checksOk === checks.length ? "var(--moss)" : "var(--lamplight)") }}>
               <Eyebrow>Readiness check &middot; {checksOk} of {checks.length}</Eyebrow>
-              <p className="text-xs mb-3" style={{ color: "var(--ink-soft)" }}>
-                What a Medicaid or LME-MCO reviewer looks for first, and what makes this plan
-                usable in the moment.
-              </p>
               {checks.map((c) => (
                 <div key={c.label} className="flex items-start gap-3 py-2" style={{ borderTop: "1px solid var(--mist)" }}>
                   <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5"
@@ -2034,16 +1246,16 @@
                     {c.ok ? "✓" : "!"}
                   </span>
                   <div>
-                    <div className="text-sm font-bold" style={{ color: c.ok ? "var(--spruce)" : "var(--ink)" }}>{c.label}</div>
-                    {!c.ok && <div className="text-xs mt-0.5" style={{ color: "var(--ink-soft)" }}>{c.detail}</div>}
-                    {!c.ok && c.blanks && c.blanks.length > 0 && (
-                      <div className="mt-2">
-                        {c.blanks.slice(0, 8).map(({ sec, f }) => (
+                    <div className="text-sm font-bold" style={{ color: c.ok ? "var(--spruce)" : "var(--ink)" }}>{tok(c.label, answers)}</div>
+                    {!c.ok && c.detail && <div className="text-xs mt-0.5" style={{ color: "var(--ink-soft)" }}>{tok(c.detail, answers)}</div>}
+                    {!c.ok && c.jump && c.jump.length > 0 && (
+                      <div className="mt-1">
+                        {c.jump.slice(0, 6).map(({ sec, f }) => (
                           <button key={f.id} onClick={() => jumpTo(sec.id)} className="block text-left text-xs py-0.5 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
-                            &rarr; &sect;{sec.num}: {tok(f.label, answers)}
+                            &rarr; {tok(f.label, answers)}
                           </button>
                         ))}
-                        {c.blanks.length > 8 && <p className="text-xs mt-1" style={{ color: "var(--ink-soft)" }}>&hellip;and {c.blanks.length - 8} more.</p>}
+                        {c.jump.length > 6 && <p className="text-xs" style={{ color: "var(--ink-soft)" }}>&hellip;and {c.jump.length - 6} more.</p>}
                       </div>
                     )}
                   </div>
@@ -2055,42 +1267,26 @@
               <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--lamplight)" }}>
                 <Eyebrow>Still needed</Eyebrow>
                 {unansweredRequired.slice(0, 12).map(({ sec, f }) => (
-                  <button
-                    key={f.id}
-                    onClick={() => jumpTo(sec.id)}
-                    className="block w-full text-left text-sm py-1 transition-colors hover:text-[#7FA08C]"
-                    style={{ color: "var(--ink-soft)" }}
-                  >
-                    &rarr; &sect;{sec.num}: {tok(f.label, answers).length > 80 ? tok(f.label, answers).slice(0, 80) + "…" : tok(f.label, answers)}
+                  <button key={f.id} onClick={() => jumpTo(sec.id)} className="block w-full text-left text-sm py-1 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
+                    &rarr; {tok(f.label, answers)}
                   </button>
                 ))}
-                {unansweredRequired.length > 12 && (
-                  <p className="text-xs mt-2" style={{ color: "var(--ink-soft)" }}>&hellip;and {unansweredRequired.length - 12} more.</p>
-                )}
+                {unansweredRequired.length > 12 && <p className="text-xs mt-2" style={{ color: "var(--ink-soft)" }}>&hellip;and {unansweredRequired.length - 12} more.</p>}
               </div>
             )}
 
             <button onClick={() => setMode("family")} className="w-full rounded-2xl p-4 mb-4 text-left transition-all active:scale-[0.99]" style={{ background: "rgba(127,160,140,0.14)", border: "1px solid var(--moss)" }}>
-              <Eyebrow>For the family</Eyebrow>
-              <div className="font-bold text-sm mb-1" style={{ color: "var(--spruce)" }}>
-                Open the family copy &rarr;
-              </div>
-              <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
-                The same plan in plain language, ready to print for the fridge and photograph for a phone.
-              </p>
+              <div className="font-bold text-sm" style={{ color: "var(--spruce)" }}>Open the family copy &rarr;</div>
+              <p className="text-xs" style={{ color: "var(--ink-soft)" }}>The same answers in plain language, ready to print.</p>
             </button>
 
             {CRISIS_SECTIONS.map((sec) => {
-              const visible = sec.fields.filter((f) => isVisible(f, answers) && f.type !== "note");
-              const answered = visible.filter((f) => formatAnswer(f, answers) !== null);
+              const answered = sec.fields.filter((f) => isVisible(f, answers) && formatAnswer(f, answers) !== null);
               if (answered.length === 0) return null;
               let lastGroup = null;
               return (
                 <div key={sec.id} className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <Eyebrow>Section {sec.num} &mdash; {tok(sec.title, answers)}</Eyebrow>
-                    {sec.cfcrPage && <span className="text-xs flex-shrink-0" style={{ color: "var(--ink-soft)" }}>CFCR p.{sec.cfcrPage}</span>}
-                  </div>
+                  <Eyebrow>{sec.cfcrPage ? "CFCR page " + sec.cfcrPage : tok(sec.title, answers)}</Eyebrow>
                   {answered.map((f, i) => {
                     const a = formatAnswer(f, answers);
                     const showGroup = f.group && f.group !== lastGroup;
@@ -2099,7 +1295,7 @@
                       <React.Fragment key={f.id}>
                         {showGroup && <div className="text-xs font-bold uppercase tracking-wider mt-4 mb-1" style={{ color: "var(--lamplight-deep)" }}>{tok(f.group, answers)}</div>}
                         <div className="py-3" style={i < answered.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
-                          <div className="text-sm" style={{ color: "var(--ink-soft)" }}>{tok(f.label, answers)}</div>
+                          <div className="text-sm" style={{ color: "var(--ink-soft)" }}>{f.cfcr ? f.cfcr : tok(f.label, answers)}</div>
                           <div className="font-bold mt-1 text-sm whitespace-pre-wrap" style={{ color: "var(--spruce)" }}>{a}</div>
                         </div>
                       </React.Fragment>
@@ -2109,7 +1305,7 @@
               );
             })}
 
-            <button onClick={() => copy(summaryText(answers), "record")} className="w-full rounded-2xl py-4 text-lg font-bold mb-3 transition-colors hover:bg-opacity-90" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
+            <button onClick={() => copy(summaryText(answers), "record")} className="w-full rounded-2xl py-4 text-lg font-bold mb-3" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
               {copied === "record" ? "Copied" : "Copy for the record"}
             </button>
             <div className="flex gap-3">
