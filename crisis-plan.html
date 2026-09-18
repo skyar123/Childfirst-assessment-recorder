@@ -157,9 +157,9 @@
           { id: "p1_emergency_phone", label: "Client emergency phone", type: "tel", req: true, family: true,
             hint: "A young child has no phone. Use the caregiver's." },
           { id: "p1_alt_phone", label: "Client alternate phone", type: "tel", family: true },
-          { id: "p1_clinical_home", label: "Clinical home / First responder", type: "text", req: true, family: true },
-          { id: "p1_lme", label: "LME-MCO", type: "select", req: true, options: LME_MCOS },
-          { id: "p1_lme_phone", label: "LME-MCO Phone", type: "tel", req: true, family: true },
+          { id: "p1_clinical_home", label: "Clinical home / First responder", type: "text", req: true, family: true, dropdown: true },
+          { id: "p1_lme", label: "LME-MCO", type: "select", req: true, options: LME_MCOS, dropdown: true },
+          { id: "p1_lme_phone", label: "LME-MCO Phone", type: "tel", req: true, family: true, dropdown: true },
 
           { id: "p1_living_stability", label: "Living situation stability", type: "radio", req: true, group: "Living Situation",
             options: [{ label: "Stable" }, { label: "Unstable" }] },
@@ -187,7 +187,7 @@
           { id: "p1_comm_comments", label: "Communication comments", type: "area", rows: 4, max: 1000, req: true, family: true,
             hint: "How {child} shows distress before words, and who understands {child} outside the family." },
 
-          { id: "p1_language", label: "Preferred language", type: "text", req: true, group: "Preferred Language",
+          { id: "p1_language", label: "Preferred language", type: "text", req: true, group: "Preferred Language", dropdown: true,
             hint: "Note if an interpreter is needed." },
 
           { id: "p1_guardian", label: "Guardian appointed?", type: "radio", req: true, group: "Legally Responsible Person",
@@ -196,7 +196,7 @@
           { id: "p1_lrp_name", label: "Legally Responsible Person Name", type: "text", req: true },
           { id: "p1_lrp_phone", label: "Contact Phone", type: "tel", req: true, family: true },
 
-          { id: "p1_ins_type", label: "Type of Insurance", type: "select", req: true, group: "Insurance",
+          { id: "p1_ins_type", label: "Type of Insurance", type: "select", req: true, group: "Insurance", dropdown: true,
             options: [
               "NC Medicaid", "NC Health Choice", "Private or commercial",
               "Medicaid application pending", "Uninsured", "Other",
@@ -341,7 +341,7 @@
       const f = [
         { id: p + "order", label: "Calling order", type: "text", group: "Support " + n,
           hint: n === 1 ? "1, 2, 3, in the order the family would call." : undefined },
-        { id: p + "who", label: "Who?", type: "text", hint: n === 1 ? "Relationship or role." : undefined },
+        { id: p + "who", label: "Who?", type: "text", dropdown: true, hint: n === 1 ? "Relationship or role." : undefined },
         { id: p + "name", label: "Name", type: "text", req: req },
         { id: p + "address", label: "Address", type: "text" },
         { id: p + "phone", label: "Phone", type: "tel", req: req },
@@ -633,8 +633,19 @@
 
     const Req = () => <span style={{ color: "var(--lamplight)" }} title="Required in CFCR"> *</span>;
 
+    // CFCR renders these as dropdowns. The printed form does not show the option
+    // lists, so rather than invent them the field stays open here and this says
+    // to pick the closest match at data entry.
+    const DropdownTag = () => (
+      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap"
+        style={{ background: "rgba(242,182,83,0.18)", color: "var(--lamplight)", letterSpacing: "0.1em" }}
+        title="CFCR renders this as a dropdown. Pick the closest match when you enter it.">
+        CFCR dropdown
+      </span>
+    );
+
     const FamilyTag = () => (
-      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ml-2 align-middle"
+      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap"
         style={{ background: "rgba(127,160,140,0.22)", color: "var(--moss)", letterSpacing: "0.1em" }}
         title="Also printed on the family copy">
         Family copy
@@ -708,8 +719,14 @@
       const labelBlock = (
         <div className="mb-3">
           <div className="text-base font-bold leading-snug" style={{ color: "var(--cream-on-dark)" }}>
-            {tok(field.label, answers)}{field.req ? <Req /> : null}{field.family ? <FamilyTag /> : null}
+            {tok(field.label, answers)}{field.req ? <Req /> : null}
           </div>
+          {(field.dropdown || field.family) && (
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {field.dropdown ? <DropdownTag /> : null}
+              {field.family ? <FamilyTag /> : null}
+            </div>
+          )}
           {field.cfcr && (
             <p className="text-xs mt-1 italic" style={{ color: "var(--moss)" }}>CFCR: {field.cfcr}</p>
           )}

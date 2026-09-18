@@ -180,6 +180,10 @@ reads straight down each page as you key it in. What changes:
   current ability, not their age*, *a minor cannot execute a PAD*.
 - **Character limits are counted as you type**, and flagged on review, because CFCR
   truncates at 1000 or 4000 and nobody notices until the text is gone.
+- **CFCR's six dropdown fields are marked as dropdowns.** The printed form does not show
+  their option lists, so rather than invent them those fields stay open here and the tag
+  says to pick the closest match at entry. Give me the real lists and they become
+  dropdowns in the app too.
 - **Narrative fields carry a one-tap "nothing to report"**, so a reviewer never meets a
   blank.
 - **The family copy** reorders the same answers into a plain-language page for the
