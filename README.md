@@ -22,6 +22,7 @@ instrument.
 | **PKBS-2** — Preschool and Kindergarten Behavior Scales | 76 | Caregiver | Social Skills and Problem Behavior |
 | **CESD-R** — CES Depression Scale, Revised | 20 | Caregiver | Caregiver depression across nine symptom domains |
 | **CCA** — Comprehensive Child First Assessment | 11 sections | Clinician | Risk and protective factors, mental status, developmental and health history, formulation, treatment recommendations |
+| **Crisis Plan** — CFCR Crisis Plan for a young child | 9 sections | Clinician, with the caregiver | A good day, the early signs, what helps and in what order, who to call first, and a plain-language copy that goes home with the family |
 
 ## The handoff
 
@@ -150,6 +151,78 @@ Each instrument computes **raw totals only**.
   alert regardless of the total.**
 - **CCA** — not scored. Tracks required fields, per-section completion, and conditional
   follow-ups, and produces a summary for the record.
+- **Crisis Plan** — not scored. Tracks required fields and per-section completion, and runs
+  a **readiness check** over the eighteen things a Medicaid or LME-MCO reviewer looks for
+  first: the three CFCR page attestations, dated signatures, a review date, dialable 24/7
+  numbers, two ranked contacts with consent status, contact restrictions, allergies and
+  medications, the least-restrictive ladder, a named owner and timeframe for the post-crisis
+  review, a copy in the caregiver's hands, and no blank narrative fields.
+
+## The Crisis Plan, and why it is not the state form
+
+The CFCR Crisis Plan (rev. 10/23) is written in the first person, for an adult who is
+planning for their own crisis: *what I am like when I am feeling well*, *who will visit
+me while I am hospitalized*, *I don't like to be touched*. A Child First client is three
+years old. Handing that form to the room and mentally translating as you go is how a plan
+ends up describing the caregiver instead of the child.
+
+So `crisis-plan.html` keeps every CFCR field — the record copy maps each section back to
+the page it is keyed into — and rewrites the prompts around the child.
+
+**It names the child on every screen.** Type the child's name once in Section i and it
+resolves into every label, hint and option after it: *What `<child>` is like on a good
+day*, *Who `<child>` settles for best*. A banner above every section states who the plan
+is for and that the caregiver is answering on their behalf. Answers store the raw token,
+so a name can be added or corrected at any point without touching what is already
+recorded.
+
+**It asks the questions this age actually raises.**
+
+- *Early signs* are the birth-to-five ones: clinginess, new separation distress, sleep
+  and appetite changes, losing words or skills, regression in toileting, head banging,
+  going still and watchful.
+- *Crisis* is defined the way it presents in a young child — distress nobody can
+  interrupt, running from adults, not eating or sleeping — and the plan asks outright
+  whether the **placement or the child-care spot** is at risk, because for a child this
+  young that is often what the crisis actually is.
+- *Communication* asks how this child communicates now, not what their age implies, and
+  then asks the question a responder needs most: **how this child shows they are
+  overwhelmed, before any words.**
+- *Coping skills* are replaced by what the adults do, in order, because at this age
+  calming is relational. The plan records who the child settles for, the settling steps
+  numbered 1-2-3, and **what makes it worse** — the most protective field on the form.
+- *Custody* is its own question. Who may consent, who may not be called, which court
+  order says so.
+- *Siblings* get a plan. The state form's "assistance needed with children" means, for a
+  child client, the brothers and sisters still in the room.
+- Adult legal instruments are answered honestly rather than left blank: a minor cannot
+  execute a WRAP plan, a futures plan, a psychiatric advance directive or a living will,
+  and the plan says so while recording the documents that *do* exist for a young child —
+  the IFSP, the child-care behaviour support plan, the DSS safety plan, the asthma or
+  seizure action plan.
+
+**It is built to survive a review.** Most narrative fields carry a one-tap *nothing to
+report* filler, because a reviewer reads a blank as a question nobody asked — the
+exceptions are the fields where "nothing to report" would not be a real answer, like
+what helps this child settle. The
+least-restrictive ladder is documented as an ordered, agreed sequence from natural
+supports through mobile crisis to the emergency department. The three CFCR *"Did you
+update this page?"* attestations are collected explicitly and the app tells you which of
+its sections feed each page. The post-crisis review needs a named person and a number of
+days, not a role. And the readiness check on the review screen lists what is still
+missing, with a tap to jump straight to it.
+
+**It prints a copy for the family.** Fields tagged **Family copy** in the editor are
+composed into a second, plain-language page — a fridge page. It is ordered the way a
+frightened adult reads at 2am: the numbers first (with the exact opening sentence to say
+on the phone, and 988 named for the caregiver's own distress, not only the child's), then
+the people to call in order, then the early signs, then what to try, then what not to do,
+then the line between a crisis and a hard day. The caregiver's own words are carried
+verbatim. It prints on its own, and copies as text for a phone. No jargon, no scores, no
+diagnosis codes.
+
+Two outputs, then: **Copy for the record** for CFCR, and the **family copy** for the
+fridge and the diaper bag.
 
 ## Where the answers live
 
@@ -163,8 +236,9 @@ a response.
   this device** panel on the start page, or **Delete saved answers** on that
   instrument's setup screen. "Start a new session" also clears the saved answers, and
   asks twice before it does. Your *edits to a question bank* persist separately.
-- **CCA** — answers autosave to `localStorage` so a long assessment can be paused and
-  resumed. They stay on that device, in that browser. "Clear all answers" erases them.
+- **CCA** and the **Crisis Plan** — answers autosave to `localStorage` so a long document can
+  be paused and resumed. They stay on that device, in that browser. "Clear all answers"
+  erases them.
 
 Saved answers are unencrypted and readable by anyone with the unlocked device. One
 device holds one session per instrument, so start a new session before handing the
@@ -228,6 +302,7 @@ load from CDNs, so a first load needs a network connection.
 ```
 index.html           All seven caregiver instruments, plus the dashboard
 cca-assessment.html  Comprehensive Child First Assessment (clinician)
+crisis-plan.html     Crisis Plan for a young child (clinician, with the caregiver)
 404.html             Not-found page
 images/logo.svg      Favicon
 netlify.toml         Publish config, security headers, redirects
@@ -240,8 +315,10 @@ question bank, a scorer that returns `{ headline, rows, alerts, followUps }`, an
 registry entry.** Nothing else changes.
 
 Each instrument is addressable directly: `#pq`, `#sniff`, `#mchat`, `#bitsea`, `#psi`, `#pkbs`, `#cesdr`.
-The CCA is a separate page because it is a different kind of instrument — sections and
-conditional fields rather than a flat item list, and completed by the clinician.
+The CCA and the Crisis Plan are separate pages because they are a different kind of
+instrument — sections and conditional fields rather than a flat item list, and completed by
+the clinician. They share a section engine of their own: a `SECTIONS` array of typed fields,
+`showIf` conditions, and a summary builder.
 
 ## Deploying
 
