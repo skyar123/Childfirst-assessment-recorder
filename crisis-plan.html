@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Crisis Plan for a Young Child — Child First</title>
+  <meta name="description" content="Phone-first crisis plan for a birth-to-five child: what a good day looks like, the early signs, what helps, who to call in what order, and a plain-language copy for the family.">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- CDN Links for React, ReactDOM, Babel, and Tailwind CSS -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --spruce: #1F3A34;
+      --spruce-deep: #162B26;
+      --paper: #F7F4EC;
+      --card: #FFFFFF;
+      --ink: #22312C;
+      --ink-soft: #5C6E66;
+      --lamplight: #F2B653;
+      --lamplight-deep: #D99A2B;
+      --moss: #7FA08C;
+      --mist: #E4E9E2;
+      --cream-on-dark: #F4EFE4;
+      --soft-on-dark: #A8BBAF;
+      --alert: #B4552E;
+      --rose: #9E4A5B;
+      --rose-soft: #C47A89;
+    }
+    .cib-display { font-family: 'Young Serif', Georgia, serif; }
+    .cib-body { font-family: 'Karla', system-ui, sans-serif; }
+    .cib-fade { animation: cibFade 320ms ease both; }
+    @keyframes cibFade {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cib-fade { animation: none; }
+    }
+    textarea:focus, input:focus, button:focus-visible, select:focus-visible {
+      outline: 3px solid var(--lamplight);
+      outline-offset: 2px;
+    }
+    /* The family copy is meant to go on a fridge. Printing it prints only it. */
+    @media print {
+      body { background: #FFFFFF; }
+      body.printing-card > div > * { display: none !important; }
+      body.printing-card #familycard { display: block !important; }
+      #familycard { box-shadow: none !important; border: none !important; max-width: none !important; }
+      #familycard .no-print { display: none !important; }
+    }
+  </style>
+
+  <script>
+    // LocalStorage Shim for window.storage to persist state in standard browsers
+    if (!window.storage) {
+      window.storage = {
+        get: async (key) => {
+          try {
+            const value = localStorage.getItem(key);
+            return value ? { value } : null;
+          } catch (e) {
+            console.error("Failed to read from localStorage", e);
+            return null;
+          }
+        },
+        set: async (key, value) => {
+          try {
+            localStorage.setItem(key, value);
+          } catch (e) {
+            console.error("Failed to write to localStorage", e);
+          }
+        }
+      };
+    }
+  </script>
+</head>
+<body class="bg-[#F7F4EC]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const STORAGE_KEY_CRISIS = "crisisplan:responses:v1";
+
+    // ─────────────────────────────────────────────────────────────
+    // Crisis Plan, CFCR rev. 10/23.
+    //
+    // Field for field, in CFCR's order, so the record copy can be keyed
+    // straight down each page. Nothing is added to the form and nothing is
+    // dropped. What changes is the wording: CFCR writes in the first person,
+    // for an adult planning their own crisis, and a Child First client is a
+    // young child, so the prompts are rewritten in the third person and name
+    // the child. Where a label is reworded, field.cfcr carries CFCR's exact
+    // wording and the screen shows it under the prompt.
+    //
+    // Field types: text | tel | date | area | radio | check | select | note
+    // field.max      CFCR's character limit, counted on screen
+    // field.cfcr     CFCR's own wording, when the prompt is reworded
+    // field.showIf   { field, equals | notEquals | includes | filled }
+    // field.family   feeds the plain-language copy for the caregiver
+    // {child} / {childs} resolve to the child's first name
+    // ─────────────────────────────────────────────────────────────
+    const YN = [{ label: "Yes" }, { label: "No" }];
+
+    const LME_MCOS = [
+      "Alliance Health",
+      "Partners Health Management",
+      "Trillium Health Resources",
+      "Vaya Health",
+      "Other",
+    ];
+
+    const CRISIS_SECTIONS = [
+      // ─── Not a CFCR page. The name drives every prompt that follows. ───
+      {
+        id: "child",
+        num: "i",
+        title: "Who this plan is for",
+        blurb: "Not CFCR fields. The name is used so every prompt says who the plan is about.",
+        fields: [
+          { id: "child_name", label: "Child's name", type: "text", req: true },
+          { id: "child_age", label: "Age", type: "text", req: true, hint: "Years and months." },
+        ],
+      },
+
+      // ─── CFCR Crisis Plan, page 1 ───
+      {
+        id: "p1",
+        num: "1",
+        title: "Crisis Plan, page 1",
+        blurb: "Dates, address, phones, clinical home, living situation, communication, language, legally responsible person, insurance, diagnoses, medical and dental, medications, allergies, other providers.",
+        cfcrPage: 1,
+        fields: [
+          { id: "p1_initial_date", label: "Date of Initial Crisis Plan", type: "date", req: true },
+          { id: "p1_revision_date", label: "Date of Last Revision", type: "date" },
+
+          { id: "p1_street1", label: "Street 1", type: "text", req: true, group: "Client Physical Address",
+            hint: "CFCR auto-populates the address from Client Contact Information. Confirm it is current." },
+          { id: "p1_street2", label: "Street 2", type: "text" },
+          { id: "p1_apt", label: "APT/Suite", type: "text" },
+          { id: "p1_city", label: "City", type: "text", req: true },
+          { id: "p1_state", label: "State/Province", type: "text", req: true },
+          { id: "p1_zip", label: "Zip", type: "text", req: true },
+          { id: "p1_zip4", label: "Zip + 4", type: "text" },
+
+          { id: "p1_emergency_phone", label: "Client emergency phone", type: "tel", req: true, family: true,
+            hint: "A young child has no phone. Use the caregiver's." },
+          { id: "p1_alt_phone", label: "Client alternate phone", type: "tel", family: true },
+          { id: "p1_clinical_home", label: "Clinical home / First responder", type: "text", req: true, family: true, dropdown: true },
+          { id: "p1_lme", label: "LME-MCO", type: "select", req: true, options: LME_MCOS, dropdown: true },
+          { id: "p1_lme_phone", label: "LME-MCO Phone", type: "tel", req: true, family: true, dropdown: true },
+
+          { id: "p1_living_stability", label: "Living situation stability", type: "radio", req: true, group: "Living Situation",
+            options: [{ label: "Stable" }, { label: "Unstable" }] },
+          { id: "p1_assist_areas", label: "In a crisis, assistance will be needed in the following area", type: "check", req: true,
+            hint: "\"Children\" means the siblings at home.",
+            options: [
+              { label: "Children" },
+              { label: "Pets" },
+              { label: "Transportation" },
+              { label: "Other (describe below)" },
+            ] },
+          { id: "p1_assist_other", label: "Other, describe", type: "area", rows: 3, max: 1000,
+            showIf: { field: "p1_assist_areas", includes: "Other (describe below)" } },
+
+          { id: "p1_employer_assist", label: "In a crisis, assistance will be needed to contact my employer. Assistance needed?", type: "radio", req: true, group: "Employment",
+            hint: "For a child: the caregiver's employer, or the child care program.",
+            options: YN },
+
+          { id: "p1_comm_method", label: "Method of communication", type: "check", req: true, group: "Communication",
+            hint: "Answer for {childs} current ability, not their age.",
+            options: [
+              { label: "Verbal" }, { label: "Nonverbal" }, { label: "Picture System" },
+              { label: "Gestures" }, { label: "Sound/Gestures" }, { label: "Other" },
+            ] },
+          { id: "p1_comm_comments", label: "Communication comments", type: "area", rows: 4, max: 1000, req: true, family: true,
+            hint: "How {child} shows distress before words, and who understands {child} outside the family." },
+
+          { id: "p1_language", label: "Preferred language", type: "text", req: true, group: "Preferred Language", dropdown: true,
+            hint: "Note if an interpreter is needed." },
+
+          { id: "p1_guardian", label: "Guardian appointed?", type: "radio", req: true, group: "Legally Responsible Person",
+            hint: "Yes if a court appointed one, including DSS legal custody.",
+            options: YN },
+          { id: "p1_lrp_name", label: "Legally Responsible Person Name", type: "text", req: true },
+          { id: "p1_lrp_phone", label: "Contact Phone", type: "tel", req: true, family: true },
+
+          { id: "p1_ins_type", label: "Type of Insurance", type: "select", req: true, group: "Insurance", dropdown: true,
+            options: [
+              "NC Medicaid", "NC Health Choice", "Private or commercial",
+              "Medicaid application pending", "Uninsured", "Other",
+            ] },
+          { id: "p1_ins_policy", label: "Policy Number/Member ID", type: "text", req: true },
+
+          { id: "p1_dx1_code", label: "Primary Diagnosis: DSM Code", type: "text", req: true, group: "Diagnoses" },
+          { id: "p1_dx1", label: "Primary Diagnosis", type: "text", req: true },
+          { id: "p1_dx1_date", label: "Diagnosis Date", type: "date", req: true },
+          { id: "p1_dx2_code", label: "Secondary Diagnosis: DSM Code", type: "text" },
+          { id: "p1_dx2", label: "Secondary Diagnosis", type: "text" },
+          { id: "p1_dx2_date", label: "Diagnosis Date", type: "date", showIf: { field: "p1_dx2", filled: true } },
+          { id: "p1_dx3_code", label: "Tertiary Diagnosis: DSM Code", type: "text" },
+          { id: "p1_dx3", label: "Tertiary Diagnosis", type: "text" },
+          { id: "p1_dx3_date", label: "Diagnosis Date", type: "date", showIf: { field: "p1_dx3", filled: true } },
+
+          { id: "p1_medical", label: "Please note all medical conditions", type: "area", req: true, rows: 5, max: 1000,
+            group: "Relevant Medical/Dental Information", family: true,
+            noneLabel: "No medical conditions reported.",
+            hint: "Important for Axis III. Include prematurity, feeding, seizures, asthma." },
+          { id: "p1_dental", label: "Dental Concerns", type: "area", rows: 3, max: 1000,
+            noneLabel: "No dental concerns reported." },
+
+          { id: "p1_meds", label: "List of Medications", type: "area", req: true, rows: 5, max: 1000,
+            group: "Medication Information", family: true,
+            noneLabel: "No current medications.",
+            hint: "Med name, dose, frequency, reason for change, date, prescriber and pharmacy." },
+          { id: "p1_meds_poor", label: "Poorly Tolerated Medications (medication and reaction)", type: "area", rows: 4, max: 1000, family: true,
+            noneLabel: "No poorly tolerated medications reported." },
+
+          { id: "p1_allergies", label: "List all allergies (include medication and reaction when applicable)", type: "area", req: true, rows: 4, max: 1000,
+            group: "Allergies", family: true,
+            noneLabel: "No known allergies." },
+
+          { id: "p1_other_providers", label: "Other providers currently engaged with the family", type: "area", req: true, rows: 5, max: 1000,
+            group: "Other Providers Currently Working with Family",
+            noneLabel: "No other providers currently engaged.",
+            hint: "Service type and contact. Include Early Intervention, child care, DSS." },
+
+          { id: "p1_updated", label: "Did you update this page?", type: "radio", req: true, group: "Page 1", options: YN },
+        ],
+      },
+
+      // ─── CFCR Crisis Plan, page 2 ───
+      {
+        id: "p2",
+        num: "2",
+        title: "Crisis Plan, page 2",
+        blurb: "Supports and the calling order, crisis follow-up planning, additional planning documents.",
+        cfcrPage: 2,
+        fields: [
+          { id: "note_supports", type: "note",
+            body: "List the people to call in a crisis, in calling order, with contact information and whether a consent to release exists for each." },
+          // Five supports, matching CFCR's "Add another support?" See supportBlock() below.
+          ...supportBlock(1, true),
+          ...supportBlock(2, false),
+          ...supportBlock(3, false),
+          ...supportBlock(4, false),
+          ...supportBlock(5, false),
+
+          { id: "p2_coordinator", label: "Who is the primary contact to coordinate care if {child} requires inpatient or other specialized care?", type: "area", req: true, rows: 4, max: 1000,
+            cfcr: "Who is the primary contact to coordinate care if the ind. requires inpatient/other specialized care?",
+            group: "Crisis Follow Up Planning", family: true,
+            hint: "Include a contact number if it is not listed above." },
+          { id: "p2_visit", label: "Who will stay with {child} while hospitalized?", type: "area", req: true, rows: 4, max: 1000,
+            cfcr: "Who will visit the individual while hospitalized? (should reflect the individual's preference)",
+            family: true,
+            hint: "For a young child, name who stays and who relieves them." },
+          { id: "p2_debrief", label: "Who will lead a review/debriefing following a crisis, and within what timeframe?", type: "area", req: true, rows: 4, max: 1000,
+            hint: "Name the person and the number of days." },
+
+          { id: "note_docs", type: "note",
+            body: "Indicate whether {child} has each document. If Yes, upload it to the Document Library." },
+          { id: "p2_doc_behavior", label: "Individual Behavior Plan", type: "radio", req: true, group: "Additional Planning Documents", options: YN },
+          { id: "p2_doc_behavior_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_suicide", label: "Suicide Prevention and Intervention Plan", type: "radio", req: true, options: YN,
+            hint: "Usually not developmentally indicated under 5. Say so in Notes." },
+          { id: "p2_doc_suicide_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_wrap", label: "WRAP Plan", type: "radio", req: true, options: YN,
+            hint: "WRAP is a self-directed adult plan. Note the caregiver's own, if there is one." },
+          { id: "p2_doc_wrap_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_futures", label: "Futures Plan (youth in transition/young adult)", type: "radio", req: true, options: YN,
+            hint: "For youth in transition. Not applicable to a young child." },
+          { id: "p2_doc_futures_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_pad", label: "Psychiatric Advance Directive (PAD)", type: "radio", req: true, options: YN,
+            hint: "A minor cannot execute a PAD. The legally responsible person directs treatment." },
+          { id: "p2_doc_pad_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+          { id: "p2_doc_advance", label: "Other Advance Directive or Living Will", type: "radio", req: true, options: YN,
+            hint: "A minor cannot execute one. Note that in Notes." },
+          { id: "p2_doc_advance_notes", label: "Notes", type: "area", rows: 3, max: 1000 },
+
+          { id: "p2_updated", label: "Did you update this page?", type: "radio", req: true, group: "Page 2", options: YN },
+        ],
+      },
+
+      // ─── CFCR Crisis Plan, page 3 ───
+      {
+        id: "p3",
+        num: "3",
+        title: "Crisis Plan, page 3",
+        blurb: "General characteristics and preferences, and the ways others can help.",
+        cfcrPage: 3,
+        fields: [
+          { id: "note_p3", type: "note", tone: "child",
+            body: "CFCR writes this page in the first person. It is written here in the third person, about {child}, because the caregiver and clinician are answering on {childs} behalf." },
+
+          { id: "p3_well", label: "What {child} is like when doing well", type: "area", req: true, rows: 7, max: 4000,
+            cfcr: "What I am like when I am feeling well",
+            group: "General Characteristics / Preferences", family: true,
+            hint: "A good day: how {child} interacts, appears and behaves." },
+          { id: "p3_early", label: "Early signs {child} is not doing well", type: "area", req: true, rows: 7, max: 4000,
+            cfcr: "Early signs that I am not doing well",
+            family: true,
+            hint: "Stress and triggers: anniversaries, holidays, noise, change in routine, unmet needs, isolation." },
+          { id: "p3_crisis", label: "What one may observe when {child} goes into crisis", type: "area", req: true, rows: 5, max: 1000,
+            cfcr: "Describe what one may observe when I go into crisis",
+            family: true,
+            hint: "Include what previous crises taught you." },
+
+          { id: "p3_prevention", label: "Crisis prevention and early intervention strategies that have been effective", type: "area", req: true, rows: 5, max: 1000,
+            group: "Ways That Others Can Help {child}", family: true,
+            hint: "What kept {child} out of crisis and out of restrictive settings. Name who {child} responds to best." },
+          { id: "p3_stabilization", label: "Strategies for crisis response and stabilization", type: "area", req: true, rows: 5, max: 1000,
+            family: true,
+            hint: "Natural and community supports first, least restrictive step first. Include back-up and respite." },
+          { id: "p3_worked", label: "What has worked well with {child}, and what has not", type: "area", req: true, rows: 5, max: 1000,
+            cfcr: "What has worked well with me...what has not worked well",
+            family: true,
+            hint: "Approaches, facilities, medications. How crisis staff should interact with {child}." },
+
+          { id: "p3_updated", label: "Did you update this page?", type: "radio", req: true, group: "Page 3", options: YN },
+        ],
+      },
+    ];
+
+    // CFCR's Supports for the Individual block, repeated up to five times.
+    // Supports 2 to 5 appear once the one before is named, which is what
+    // CFCR's "Add another support?" does.
+    function supportBlock(n, req) {
+      const p = "s" + n + "_";
+      const gate = n === 1 ? null : { field: "s" + (n - 1) + "_name", filled: true };
+      const f = [
+        { id: p + "order", label: "Calling order", type: "text", group: "Support " + n,
+          hint: n === 1 ? "1, 2, 3, in the order the family would call." : undefined },
+        { id: p + "who", label: "Who?", type: "text", dropdown: true, hint: n === 1 ? "Relationship or role." : undefined },
+        { id: p + "name", label: "Name", type: "text", req: req },
+        { id: p + "address", label: "Address", type: "text" },
+        { id: p + "phone", label: "Phone", type: "tel", req: req },
+        { id: p + "consent", label: "Is there a valid consent to release?", type: "radio", options: YN },
+      ];
+      return gate ? f.map((x) => ({ ...x, showIf: x.showIf || gate })) : f;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────
+
+    // Stored answers keep their raw {child} tokens; only the display layer
+    // resolves them, so a name can be added or fixed at any point.
+    function firstName(answers) {
+      const n = (answers.child_name || "").trim();
+      if (!n) return "";
+      if (n.indexOf(",") > -1) {
+        const after = n.split(",")[1];
+        if (after && after.trim()) return after.trim().split(/\s+/)[0];
+      }
+      return n.split(/\s+/)[0];
+    }
+
+    function tok(s, answers) {
+      if (s === undefined || s === null) return s;
+      const src = String(s);
+      const fn = firstName(answers);
+      const name = fn || "this child";
+      const poss = fn ? fn + "’s" : "this child’s";
+      let out = src.replace(/\{childs\}/g, poss).replace(/\{child\}/g, name);
+      if (/^\{child/.test(src)) out = out.charAt(0).toUpperCase() + out.slice(1);
+      return out;
+    }
+
+    function isVisible(field, answers) {
+      if (!field.showIf) return true;
+      const c = field.showIf;
+      const v = answers[c.field];
+      if (c.filled !== undefined) {
+        const filled = typeof v === "string" ? v.trim().length > 0 : Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== "";
+        return c.filled ? filled : !filled;
+      }
+      if (c.equals !== undefined) return v === c.equals;
+      if (c.notEquals !== undefined) return v !== undefined && v !== c.notEquals;
+      if (c.includes !== undefined) return Array.isArray(v) && v.includes(c.includes);
+      return true;
+    }
+
+    function isAnswered(field, answers) {
+      if (field.type === "note") return true;
+      const v = answers[field.id];
+      if (field.type === "check") return Array.isArray(v) && v.length > 0;
+      if (field.type === "area" || field.type === "text" || field.type === "tel") {
+        return typeof v === "string" && v.trim().length > 0;
+      }
+      return v !== undefined && v !== null && v !== "";
+    }
+
+    function formatAnswer(field, answers) {
+      if (field.type === "note") return null;
+      const v = answers[field.id];
+      if (v === undefined || v === null || v === "") return null;
+      if (field.type === "check") {
+        if (!Array.isArray(v) || v.length === 0) return null;
+        return v.map((l) => tok(l, answers)).join("; ");
+      }
+      if (typeof v === "string") return v.trim();
+      return String(v);
+    }
+
+    const val = (answers, id) => {
+      const v = answers[id];
+      return typeof v === "string" ? v.trim() : "";
+    };
+
+    // Everything over a CFCR character limit, which CFCR would truncate.
+    function overLimit(answers) {
+      const out = [];
+      CRISIS_SECTIONS.forEach((sec) => {
+        sec.fields.forEach((f) => {
+          if (!f.max || !isVisible(f, answers)) return;
+          const len = val(answers, f.id).length;
+          if (len > f.max) out.push({ sec, f, len });
+        });
+      });
+      return out;
+    }
+
+    function supportList(answers) {
+      const out = [];
+      for (let n = 1; n <= 5; n++) {
+        const name = val(answers, "s" + n + "_name");
+        if (!name) continue;
+        out.push({
+          n, name,
+          order: val(answers, "s" + n + "_order"),
+          who: val(answers, "s" + n + "_who"),
+          phone: val(answers, "s" + n + "_phone"),
+          address: val(answers, "s" + n + "_address"),
+          consent: val(answers, "s" + n + "_consent"),
+        });
+      }
+      return out;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Record copy: CFCR's own labels, in CFCR's order, page by page,
+    // so it can be keyed straight down each screen.
+    // ─────────────────────────────────────────────────────────────
+    function summaryText(answers) {
+      const lines = [
+        "CRISIS PLAN (CFCR rev. 10/23)",
+        "Child: " + (val(answers, "child_name") || "(not entered)") +
+          (val(answers, "child_age") ? ", " + val(answers, "child_age") : ""),
+        "Generated: " + new Date().toLocaleString(),
+        "",
+      ];
+      CRISIS_SECTIONS.forEach((sec) => {
+        if (sec.id === "child") return;
+        const answered = sec.fields.filter((f) => isVisible(f, answers) && formatAnswer(f, answers) !== null);
+        if (answered.length === 0) return;
+        lines.push("=".repeat(66));
+        lines.push("CRISIS PLAN, PAGE " + sec.cfcrPage);
+        lines.push("=".repeat(66));
+        let lastGroup = null;
+        answered.forEach((f) => {
+          if (f.group && f.group !== lastGroup) {
+            lines.push("");
+            lines.push("[" + tok(f.group, answers).toUpperCase() + "]");
+            lastGroup = f.group;
+          }
+          lines.push("");
+          lines.push(f.cfcr ? f.cfcr : tok(f.label, answers));
+          lines.push("  " + formatAnswer(f, answers).split("\n").join("\n  "));
+        });
+        lines.push("");
+      });
+      return lines.join("\n");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Family copy: the same CFCR answers, in the order someone reads
+    // them in a crisis. No extra questions, no clinical labels.
+    // ─────────────────────────────────────────────────────────────
+    function familyCardBlocks(answers) {
+      const nm = firstName(answers) || "your child";
+      const supports = supportList(answers);
+      const blocks = [];
+      const push = (title, items) => {
+        const keep = items.filter((i) => i && i.body && String(i.body).trim());
+        if (keep.length) blocks.push({ title, items: keep });
+      };
+
+      push("Who to call", [
+        ...supports.map((s) => ({
+          label: (s.order ? s.order + ". " : "") + s.name + (s.who ? ", " + s.who : ""),
+          body: s.phone,
+        })),
+        val(answers, "p1_clinical_home")
+          ? { label: "First responder", body: val(answers, "p1_clinical_home") }
+          : null,
+        val(answers, "p1_lme_phone") ? { label: val(answers, "p1_lme") || "LME-MCO", body: val(answers, "p1_lme_phone") } : null,
+        { label: "988", body: "Call or text, any hour. For " + nm + ", and for you." },
+        { label: "911", body: "Only if someone is in immediate danger." },
+      ]);
+
+      push(nm.charAt(0).toUpperCase() + nm.slice(1) + " on a good day", [
+        { label: "", body: val(answers, "p3_well") },
+      ]);
+
+      push("Early signs", [
+        { label: "", body: val(answers, "p3_early") },
+        { label: "How " + nm + " communicates", body: val(answers, "p1_comm_comments") },
+      ]);
+
+      push("What a crisis looks like", [
+        { label: "", body: val(answers, "p3_crisis") },
+      ]);
+
+      push("What helps", [
+        { label: "What keeps " + nm + " out of crisis", body: val(answers, "p3_prevention") },
+        { label: "What to do in a crisis", body: val(answers, "p3_stabilization") },
+        { label: "What has worked, and what has not", body: val(answers, "p3_worked") },
+      ]);
+
+      push("Things a doctor or responder needs to know", [
+        { label: "Allergies", body: val(answers, "p1_allergies") },
+        { label: "Medicines", body: val(answers, "p1_meds") },
+        { label: "Medicines that did not go well", body: val(answers, "p1_meds_poor") },
+        { label: "Health conditions", body: val(answers, "p1_medical") },
+      ]);
+
+      push("If " + nm + " goes to the hospital", [
+        { label: "Who stays with " + nm, body: val(answers, "p2_visit") },
+        { label: "Who coordinates care", body: val(answers, "p2_coordinator") },
+      ]);
+
+      push("Our numbers", [
+        { label: "Emergency", body: val(answers, "p1_emergency_phone") },
+        { label: "Second number", body: val(answers, "p1_alt_phone") },
+        { label: val(answers, "p1_lrp_name") || "Legally responsible person", body: val(answers, "p1_lrp_phone") },
+      ]);
+
+      return blocks;
+    }
+
+    function familyCardText(answers) {
+      const nm = firstName(answers);
+      const lines = [
+        (nm ? nm.toUpperCase() + "’S" : "YOUR CHILD’S") + " CRISIS PLAN, FAMILY COPY",
+        (val(answers, "child_age") ? "Age " + val(answers, "child_age") + ". " : "") +
+          (val(answers, "p1_revision_date") || val(answers, "p1_initial_date")
+            ? "Updated " + (val(answers, "p1_revision_date") || val(answers, "p1_initial_date")) + "."
+            : ""),
+        "",
+      ];
+      familyCardBlocks(answers).forEach((b) => {
+        lines.push("-".repeat(46));
+        lines.push(b.title.toUpperCase());
+        lines.push("-".repeat(46));
+        b.items.forEach((i) => {
+          if (i.label) {
+            lines.push(i.label + ":");
+            lines.push("  " + String(i.body).split("\n").join("\n  "));
+          } else {
+            lines.push(String(i.body));
+          }
+          lines.push("");
+        });
+      });
+      return lines.join("\n");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Readiness check: the CFCR fields a reviewer looks for first.
+    // ─────────────────────────────────────────────────────────────
+    function readinessChecks(answers) {
+      const supports = supportList(answers);
+      const withPhone = supports.filter((s) => s.phone);
+      const noConsent = supports.filter((s) => !s.consent);
+      const pages = ["p1_updated", "p2_updated", "p3_updated"].filter((id) => val(answers, id));
+      const over = overLimit(answers);
+      const p3 = ["p3_well", "p3_early", "p3_crisis", "p3_prevention", "p3_stabilization", "p3_worked"];
+      const p3Blank = p3.filter((id) => !val(answers, id));
+      const blankAreas = [];
+      CRISIS_SECTIONS.forEach((sec) => {
+        sec.fields.forEach((f) => {
+          if (f.type === "area" && isVisible(f, answers) && !isAnswered(f, answers)) blankAreas.push({ sec, f });
+        });
+      });
+
+      return [
+        { ok: !!val(answers, "p1_initial_date"), label: "Date of Initial Crisis Plan",
+          detail: "Top of page 1." },
+        { ok: pages.length === 3, label: "All three \"Did you update this page?\" answered",
+          detail: pages.length + " of 3." },
+        { ok: !!val(answers, "p1_clinical_home") && !!val(answers, "p1_lme") && !!val(answers, "p1_lme_phone"),
+          label: "Clinical home, LME-MCO and LME-MCO phone", detail: "All three are on page 1." },
+        { ok: !!val(answers, "p1_lrp_name") && !!val(answers, "p1_lrp_phone"),
+          label: "Legally responsible person, with a phone", detail: "Who can consent for {child}." },
+        { ok: withPhone.length >= 1, label: "At least one support with a name and a phone",
+          detail: withPhone.length + " recorded." },
+        { ok: noConsent.length === 0, label: "Consent to release answered for every support named",
+          detail: noConsent.length === 0 ? "" : noConsent.length + " with no answer." },
+        { ok: !!val(answers, "p1_allergies") && !!val(answers, "p1_meds"),
+          label: "Allergies and medications recorded",
+          detail: "\"No known allergies\" and \"no current medications\" are answers." },
+        { ok: p3Blank.length === 0, label: "Page 3 complete",
+          detail: p3Blank.length + " of 6 narrative fields blank." },
+        { ok: over.length === 0, label: "Nothing over the CFCR character limit",
+          detail: over.length === 0 ? "" : over.map((o) => o.len + "/" + o.f.max).join(", ") + ". CFCR will cut the rest.",
+          jump: over.map((o) => ({ sec: o.sec, f: o.f })) },
+        { ok: blankAreas.length === 0, label: "No blank text areas",
+          detail: blankAreas.length === 0 ? "" : blankAreas.length + " blank.",
+          jump: blankAreas },
+      ];
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Small pieces
+    // ─────────────────────────────────────────────────────────────
+    const Eyebrow = ({ children, dark }) => (
+      <div className="cib-body text-xs font-bold uppercase tracking-widest mb-2"
+        style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}>
+        {children}
+      </div>
+    );
+
+    const Req = () => <span style={{ color: "var(--lamplight)" }} title="Required in CFCR"> *</span>;
+
+    // CFCR renders these as dropdowns. The printed form does not show the option
+    // lists, so rather than invent them the field stays open here and this says
+    // to pick the closest match at data entry.
+    const DropdownTag = () => (
+      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap"
+        style={{ background: "rgba(242,182,83,0.18)", color: "var(--lamplight)", letterSpacing: "0.1em" }}
+        title="CFCR renders this as a dropdown. Pick the closest match when you enter it.">
+        CFCR dropdown
+      </span>
+    );
+
+    const FamilyTag = () => (
+      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap"
+        style={{ background: "rgba(127,160,140,0.22)", color: "var(--moss)", letterSpacing: "0.1em" }}
+        title="Also printed on the family copy">
+        Family copy
+      </span>
+    );
+
+    function ChildBanner({ answers }) {
+      const nm = val(answers, "child_name");
+      const age = val(answers, "child_age");
+      return (
+        <div className="rounded-2xl px-4 py-2 mb-6" style={{ background: "rgba(242,182,83,0.12)", border: "1px solid rgba(242,182,83,0.4)" }}>
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--lamplight)", letterSpacing: "0.12em" }}>
+            For the child
+          </span>
+          <div className="text-sm" style={{ color: "var(--cream-on-dark)" }}>
+            {nm ? <span><strong>{nm}</strong>{age ? ", " + age : ""}</span> : <span>Add the name in Section i.</span>}
+          </div>
+        </div>
+      );
+    }
+
+    function NoteView({ field, answers }) {
+      const tone = field.tone === "child"
+        ? { bg: "rgba(127,160,140,0.14)", border: "rgba(127,160,140,0.45)" }
+        : { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.16)" };
+      return (
+        <div className="rounded-2xl p-4 mb-8" style={{ background: tone.bg, border: "1px solid " + tone.border }}>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--cream-on-dark)" }}>{tok(field.body, answers)}</p>
+        </div>
+      );
+    }
+
+    function AssessmentIntro({ eyebrow, title, subtitle, purpose, meta, beginLabel, backLabel, onBegin, onBack }) {
+      return (
+        <div className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+          <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 flex flex-col flex-1">
+            <button onClick={onBack} className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
+              &larr; {backLabel || "Back"}
+            </button>
+            <div className="flex-1 flex flex-col justify-center py-10 cib-fade">
+              <div className="rounded-3xl p-7" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                <div className="cib-body text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--lamplight)", letterSpacing: "0.14em" }}>{eyebrow}</div>
+                <h1 className="cib-display text-3xl leading-tight mb-2" style={{ color: "var(--cream-on-dark)" }}>{title}</h1>
+                <p className="text-sm" style={{ color: "var(--soft-on-dark)" }}>{subtitle}</p>
+                <div className="h-px w-full my-5" style={{ background: "rgba(255,255,255,0.14)" }} />
+                <p className="text-base leading-relaxed" style={{ color: "var(--cream-on-dark)" }}>{purpose}</p>
+                <div className="flex flex-wrap gap-2 mt-6">
+                  {meta.map((m) => (
+                    <span key={m} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.09)", color: "var(--soft-on-dark)" }}>{m}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button onClick={onBegin} className="w-full rounded-2xl py-4 text-lg font-bold transition-transform active:scale-[0.98]" style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
+              {beginLabel}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Field renderer
+    // ─────────────────────────────────────────────────────────────
+    function FieldView({ field, answers, setField }) {
+      const value = answers[field.id];
+      const inputStyle = { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" };
+
+      if (field.type === "note") return <NoteView field={field} answers={answers} />;
+
+      const labelBlock = (
+        <div className="mb-3">
+          <div className="text-base font-bold leading-snug" style={{ color: "var(--cream-on-dark)" }}>
+            {tok(field.label, answers)}{field.req ? <Req /> : null}
+          </div>
+          {(field.dropdown || field.family) && (
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {field.dropdown ? <DropdownTag /> : null}
+              {field.family ? <FamilyTag /> : null}
+            </div>
+          )}
+          {field.cfcr && (
+            <p className="text-xs mt-1 italic" style={{ color: "var(--moss)" }}>CFCR: {field.cfcr}</p>
+          )}
+          {field.hint && (
+            <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--soft-on-dark)" }}>{tok(field.hint, answers)}</p>
+          )}
+        </div>
+      );
+
+      // A blank field in a Medicaid record reads as a question nobody asked.
+      const noneChip = field.noneLabel && !(typeof value === "string" && value.trim())
+        ? (
+          <button onClick={() => setField(field.id, tok(field.noneLabel, answers))}
+            className="mt-2 text-xs font-bold px-3 py-2 rounded-xl transition-colors hover:bg-white/10"
+            style={{ background: "rgba(255,255,255,0.05)", color: "var(--soft-on-dark)", border: "1px dashed rgba(255,255,255,0.25)" }}>
+            Nothing to report
+          </button>
+        ) : null;
+
+      // CFCR truncates at the limit, so the count is worth seeing while typing.
+      const counter = field.max
+        ? (() => {
+            const len = (typeof value === "string" ? value : "").length;
+            const over = len > field.max;
+            return (
+              <div className="text-xs mt-1 text-right" style={{ color: over ? "var(--lamplight)" : "var(--soft-on-dark)" }}>
+                {len} / {field.max}{over ? " over" : ""}
+              </div>
+            );
+          })()
+        : null;
+
+      if (field.type === "text" || field.type === "date" || field.type === "tel") {
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <input type={field.type === "tel" ? "tel" : field.type}
+              inputMode={field.type === "tel" ? "tel" : undefined}
+              value={typeof value === "string" ? value : ""}
+              onChange={(e) => setField(field.id, e.target.value)}
+              className="w-full rounded-2xl px-4 py-3 text-base focus:outline-none"
+              style={{ ...inputStyle, colorScheme: "dark" }} />
+            {noneChip}
+          </div>
+        );
+      }
+
+      if (field.type === "select") {
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <select value={typeof value === "string" ? value : ""}
+              onChange={(e) => setField(field.id, e.target.value)}
+              className="w-full rounded-2xl px-4 py-3 text-base focus:outline-none"
+              style={{ ...inputStyle, colorScheme: "dark" }}>
+              <option value="">Select&hellip;</option>
+              {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          </div>
+        );
+      }
+
+      if (field.type === "area") {
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <textarea value={typeof value === "string" ? value : ""}
+              onChange={(e) => setField(field.id, e.target.value)}
+              rows={field.rows || 4}
+              placeholder="Type here&hellip;"
+              className="w-full rounded-2xl p-4 text-base resize-y focus:outline-none"
+              style={inputStyle} />
+            {counter}
+            {noneChip}
+          </div>
+        );
+      }
+
+      if (field.type === "radio") {
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <div className="flex flex-col gap-2">
+              {field.options.map((opt) => {
+                const selected = value === opt.label;
+                return (
+                  <button key={opt.label} onClick={() => setField(field.id, opt.label)}
+                    className="w-full rounded-2xl py-3 px-4 text-left text-sm font-bold transition-all active:scale-[0.99]"
+                    style={selected
+                      ? { background: "var(--lamplight)", color: "var(--spruce-deep)", boxShadow: "0 0 0 3px rgba(242,182,83,0.35)" }
+                      : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                    {tok(opt.label, answers)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
+      if (field.type === "check") {
+        const arr = Array.isArray(value) ? value : [];
+        const toggle = (label) => {
+          if (arr.includes(label)) setField(field.id, arr.filter((x) => x !== label));
+          else setField(field.id, [...arr, label]);
+        };
+        return (
+          <div className="mb-8">
+            {labelBlock}
+            <div className="flex flex-col gap-2">
+              {field.options.map((opt) => {
+                const checked = arr.includes(opt.label);
+                return (
+                  <button key={opt.label} onClick={() => toggle(opt.label)}
+                    className="w-full rounded-2xl py-3 px-4 text-left text-sm font-bold transition-all active:scale-[0.99] flex items-start gap-3"
+                    style={checked
+                      ? { background: "var(--moss)", color: "var(--spruce-deep)" }
+                      : { background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                    <span className="flex-shrink-0 w-5 h-5 rounded-md mt-0.5 flex items-center justify-center text-xs"
+                      style={checked
+                        ? { background: "var(--spruce-deep)", color: "var(--lamplight)" }
+                        : { border: "2px solid rgba(255,255,255,0.35)", color: "transparent" }}>&#10003;</span>
+                    <span>{tok(opt.label, answers)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // The family copy, built to be printed
+    // ─────────────────────────────────────────────────────────────
+    function FamilyCard({ answers }) {
+      const nm = firstName(answers);
+      const blocks = familyCardBlocks(answers);
+      const updated = val(answers, "p1_revision_date") || val(answers, "p1_initial_date");
+      return (
+        <div id="familycard" className="max-w-md mx-auto px-5 py-8" style={{ background: "var(--card)" }}>
+          <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--moss)", letterSpacing: "0.14em" }}>Family copy</div>
+          <h1 className="cib-display text-3xl leading-tight mb-1" style={{ color: "var(--spruce)" }}>
+            {nm ? nm + "’s crisis plan" : "Your child’s crisis plan"}
+          </h1>
+          <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
+            {val(answers, "child_age") ? "Age " + val(answers, "child_age") + ". " : ""}
+            {updated ? "Updated " + updated + "." : ""}
+          </p>
+
+          {blocks.length === 0 && (
+            <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+              Nothing to print yet. This page fills in from the answers tagged &ldquo;Family copy&rdquo;.
+            </p>
+          )}
+
+          {blocks.map((b, bi) => (
+            <div key={b.title} className="mb-5 rounded-2xl p-4"
+              style={{ background: bi === 0 ? "rgba(242,182,83,0.13)" : "var(--paper)", border: "1px solid " + (bi === 0 ? "rgba(217,154,43,0.5)" : "var(--mist)") }}>
+              <h2 className="cib-display text-lg leading-snug mb-3" style={{ color: "var(--spruce)" }}>{b.title}</h2>
+              {b.items.map((i, ii) => (
+                <div key={ii} className="py-2" style={ii < b.items.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
+                  {i.label ? <div className="text-sm font-bold mb-1" style={{ color: "var(--ink-soft)" }}>{i.label}</div> : null}
+                  <div className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: "var(--ink)" }}>{i.body}</div>
+                </div>
+              ))}
+            </div>
+          ))}
+
+          <p className="text-xs mt-6 pt-4" style={{ color: "var(--ink-soft)", borderTop: "1px solid var(--mist)" }}>
+            Your copy, in plain language. The full plan is in {nm ? nm + "’s" : "your child’s"} record.
+          </p>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Main App
+    // ─────────────────────────────────────────────────────────────
+    function App() {
+      const [mode, setMode] = useState("home"); // home | intro | fill | done | family
+      const [answers, setAnswers] = useState({});
+      const [secIdx, setSecIdx] = useState(0);
+      const [saveState, setSaveState] = useState("idle");
+      const [copied, setCopied] = useState("");
+      const [confirmClear, setConfirmClear] = useState(false);
+      const loadedRef = useRef(false);
+      const topRef = useRef(null);
+
+      useEffect(() => {
+        let alive = true;
+        (async () => {
+          try {
+            if (!window.storage) {
+              if (alive) setSaveState("off");
+              loadedRef.current = true;
+              return;
+            }
+            const result = await window.storage.get(STORAGE_KEY_CRISIS);
+            if (alive && result && result.value) {
+              const parsed = JSON.parse(result.value);
+              if (parsed && typeof parsed === "object") setAnswers(parsed);
+            }
+          } catch (e) {
+            // ignore
+          } finally {
+            loadedRef.current = true;
+          }
+        })();
+        return () => { alive = false; };
+      }, []);
+
+      useEffect(() => {
+        if (!loadedRef.current) return;
+        let cancelled = false;
+        const t = setTimeout(async () => {
+          try {
+            if (!window.storage) return;
+            await window.storage.set(STORAGE_KEY_CRISIS, JSON.stringify(answers));
+            if (!cancelled) {
+              setSaveState("saved");
+              setTimeout(() => { if (!cancelled) setSaveState("idle"); }, 1500);
+            }
+          } catch (e) {
+            if (!cancelled) setSaveState("off");
+          }
+        }, 600);
+        return () => { cancelled = true; clearTimeout(t); };
+      }, [answers]);
+
+      const setField = (id, v) => setAnswers((a) => ({ ...a, [id]: v }));
+
+      const answeredAny = Object.keys(answers).length > 0;
+      const totalRequired = CRISIS_SECTIONS.reduce((n, sec) => n + sec.fields.filter((f) => f.req).length, 0);
+      const section = CRISIS_SECTIONS[secIdx];
+      const visibleFields = section ? section.fields.filter((f) => isVisible(f, answers)) : [];
+      const progress = ((secIdx + 1) / CRISIS_SECTIONS.length) * 100;
+
+      const sectionCompletion = (sec) => {
+        const vis = sec.fields.filter((f) => isVisible(f, answers) && f.req);
+        if (vis.length === 0) return 1;
+        return vis.filter((f) => isAnswered(f, answers)).length / vis.length;
+      };
+
+      const scrollTop = () => {
+        if (topRef.current && topRef.current.scrollIntoView) topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        else window.scrollTo(0, 0);
+      };
+
+      const goNext = () => {
+        if (secIdx + 1 >= CRISIS_SECTIONS.length) setMode("done");
+        else setSecIdx(secIdx + 1);
+        scrollTop();
+      };
+      const goBack = () => {
+        if (secIdx === 0) setMode("intro");
+        else setSecIdx(secIdx - 1);
+        scrollTop();
+      };
+      const jumpTo = (sectionId) => {
+        const i = CRISIS_SECTIONS.findIndex((s) => s.id === sectionId);
+        if (i >= 0) { setSecIdx(i); setMode("fill"); scrollTop(); }
+      };
+
+      const clearAll = () => {
+        if (!confirmClear) {
+          setConfirmClear(true);
+          setTimeout(() => setConfirmClear(false), 3000);
+          return;
+        }
+        setConfirmClear(false);
+        setAnswers({});
+        setSecIdx(0);
+        setMode("home");
+      };
+
+      const copy = async (text, which) => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(which);
+        } catch (e) {
+          try {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            setCopied(which);
+          } catch (err) {
+            setCopied("");
+          }
+        }
+        setTimeout(() => setCopied(""), 2000);
+      };
+
+      const printCard = () => {
+        document.body.classList.add("printing-card");
+        window.print();
+        setTimeout(() => document.body.classList.remove("printing-card"), 500);
+      };
+
+      const checks = readinessChecks(answers);
+      const checksOk = checks.filter((c) => c.ok).length;
+
+      // ─── HOME ───
+      if (mode === "home") {
+        return (
+          <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+            <div className="max-w-md mx-auto px-5 py-10 pb-32">
+              <a href="index.html" className="inline-block text-xs font-bold uppercase tracking-wider mb-6 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
+                &larr; Back to Assessment Recorders
+              </a>
+
+              <Eyebrow>Child First Clinical Record</Eyebrow>
+              <h1 className="cib-display text-3xl leading-tight mb-2" style={{ color: "var(--spruce)" }}>Crisis Plan</h1>
+              <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
+                The CFCR Crisis Plan (rev. 10/23), field for field, in CFCR's order, worded for a
+                young child. Autosaves on this device.
+                {saveState === "saved" && <span style={{ color: "var(--moss)" }}> Saved.</span>}
+                {saveState === "off" && <span> Saving is off here.</span>}
+              </p>
+
+              <div className="rounded-2xl p-4 mb-6" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                <Eyebrow>Before you begin</Eyebrow>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
+                  Same fields as CFCR, so the record copy reads straight down each page. Where a
+                  prompt is reworded for a child, CFCR's own wording shows under it.
+                  <span style={{ color: "var(--lamplight-deep)" }}> *</span> marks a required field,
+                  and character limits are counted as you type.
+                </p>
+              </div>
+
+              <Eyebrow>Sections</Eyebrow>
+              <div className="flex flex-col gap-2 mb-8">
+                {CRISIS_SECTIONS.map((sec, i) => {
+                  const c = sectionCompletion(sec);
+                  return (
+                    <button key={sec.id} onClick={() => { setSecIdx(i); setMode("fill"); }}
+                      className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.99] hover:border-[#7FA08C]"
+                      style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="cib-display text-lg w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: c >= 1 ? "var(--moss)" : "var(--mist)", color: c >= 1 ? "var(--spruce-deep)" : "var(--spruce)" }}>
+                            {sec.num}
+                          </span>
+                          <div>
+                            <div className="font-bold text-sm" style={{ color: "var(--spruce)" }}>{tok(sec.title, answers)}</div>
+                            <div className="text-xs" style={{ color: "var(--ink-soft)" }}>{tok(sec.blurb, answers)}</div>
+                          </div>
+                        </div>
+                        {c >= 1
+                          ? <span className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>&#10003;</span>
+                          : c > 0
+                            ? <span className="text-xs font-bold flex-shrink-0" style={{ color: "var(--lamplight-deep)" }}>{Math.round(c * 100)}%</span>
+                            : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => { setSecIdx(0); setMode("intro"); }}
+                  className="flex-1 rounded-2xl py-4 text-base font-bold transition-transform active:scale-[0.98]"
+                  style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
+                  {answeredAny ? "Resume" : "Start"} crisis plan
+                </button>
+                {answeredAny && (
+                  <button onClick={() => setMode("done")}
+                    className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-[#FAF8F5]"
+                    style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
+                    Review &amp; copy
+                  </button>
+                )}
+              </div>
+              {answeredAny && (
+                <button onClick={() => setMode("family")} className="w-full rounded-2xl py-3 mt-2 text-sm font-bold transition-colors hover:bg-[#FAF8F5]"
+                  style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--moss)" }}>
+                  Family copy
+                </button>
+              )}
+              {answeredAny && (
+                <button onClick={clearAll} className="w-full py-3 mt-2 text-sm transition-colors" style={{ color: confirmClear ? "var(--alert)" : "var(--ink-soft)" }}>
+                  {confirmClear ? "Tap again to erase all answers" : "Clear all answers"}
+                </button>
+              )}
+
+              <div className="text-center text-xs mt-8 pt-6" style={{ color: "var(--ink-soft)", borderTop: "1px solid var(--mist)" }}>
+                <p>A recording convenience only. The plan in the clinical record is the plan.</p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ─── INTRO ───
+      if (mode === "intro") {
+        return (
+          <AssessmentIntro
+            eyebrow="Child First Clinical Record"
+            title="Crisis Plan"
+            subtitle="CFCR Crisis Plan, rev. 10/23"
+            purpose="CFCR writes this plan in the first person, for an adult planning their own crisis. The client here is a young child, so the same fields are worded in the third person and name the child. Nothing is added to the form and nothing is dropped."
+            meta={["3 CFCR pages", totalRequired + " required fields", "Record copy + family copy"]}
+            beginLabel={answeredAny ? "Continue" : "Begin"}
+            backLabel="Back to sections"
+            onBegin={() => setMode("fill")}
+            onBack={() => setMode("home")}
+          />
+        );
+      }
+
+      // ─── FILL ───
+      if (mode === "fill") {
+        let lastGroup = null;
+        return (
+          <div ref={topRef} className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+            <div className="max-w-md mx-auto w-full px-5 pt-6 pb-10 flex flex-col flex-1">
+              <div className="mb-6">
+                <div className="flex justify-between items-baseline mb-2">
+                  <button onClick={() => setMode("home")} className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--soft-on-dark)" }}>
+                    &larr; Sections
+                  </button>
+                  <span className="text-sm" style={{ color: "var(--soft-on-dark)" }}>
+                    {section.cfcrPage ? "CFCR page " + section.cfcrPage : "Setup"}
+                    {saveState === "saved" && <span style={{ color: "var(--moss)" }}> &middot; Saved</span>}
+                  </span>
+                </div>
+                <div className="h-1 rounded-full w-full" style={{ background: "rgba(255,255,255,0.12)" }}>
+                  <div className="h-1 rounded-full" style={{ width: progress + "%", background: "var(--lamplight)", transition: "width 300ms ease" }} />
+                </div>
+              </div>
+
+              <ChildBanner answers={answers} />
+
+              <div key={section.id} className="cib-fade flex-1">
+                <h1 className="cib-display text-2xl leading-snug mb-2" style={{ color: "var(--cream-on-dark)" }}>{tok(section.title, answers)}</h1>
+                <p className="text-sm mb-8" style={{ color: "var(--soft-on-dark)" }}>{tok(section.blurb, answers)}</p>
+
+                {visibleFields.map((f) => {
+                  const showGroup = f.group && f.group !== lastGroup;
+                  if (f.group) lastGroup = f.group;
+                  return (
+                    <React.Fragment key={f.id}>
+                      {showGroup && (
+                        <div className="mt-2 mb-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.14)" }}>
+                          <Eyebrow dark>{tok(f.group, answers)}</Eyebrow>
+                        </div>
+                      )}
+                      <FieldView field={f} answers={answers} setField={setField} />
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-3 mt-4">
+                <button onClick={goBack} className="rounded-2xl py-4 px-6 text-base font-bold transition-colors hover:bg-white/10" style={{ background: "rgba(255,255,255,0.07)", color: "var(--cream-on-dark)", border: "1px solid rgba(255,255,255,0.14)" }}>
+                  Back
+                </button>
+                <button onClick={goNext} className="flex-1 rounded-2xl py-4 text-base font-bold" style={{ background: "var(--cream-on-dark)", color: "var(--spruce-deep)" }}>
+                  {secIdx + 1 >= CRISIS_SECTIONS.length ? "Finish & review" : "Next"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ─── FAMILY COPY ───
+      if (mode === "family") {
+        return (
+          <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+            <div className="max-w-md mx-auto px-5 py-8 no-print">
+              <button onClick={() => setMode("done")} className="text-xs font-bold uppercase tracking-wider mb-4 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
+                &larr; Back to review
+              </button>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
+                The same CFCR answers, reordered for the caregiver. No extra questions.
+              </p>
+            </div>
+
+            <div className="rounded-2xl mx-auto max-w-md" style={{ border: "1px solid var(--mist)", background: "var(--card)" }}>
+              <FamilyCard answers={answers} />
+            </div>
+
+            <div className="max-w-md mx-auto px-5 py-6 no-print flex gap-3">
+              <button onClick={printCard} className="flex-1 rounded-2xl py-4 text-base font-bold transition-transform active:scale-[0.98]" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
+                Print
+              </button>
+              <button onClick={() => copy(familyCardText(answers), "family")} className="flex-1 rounded-2xl py-4 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
+                {copied === "family" ? "Copied" : "Copy as text"}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // ─── DONE / REVIEW ───
+      const unansweredRequired = [];
+      CRISIS_SECTIONS.forEach((sec) => {
+        sec.fields.forEach((f) => {
+          if (f.req && isVisible(f, answers) && !isAnswered(f, answers)) unansweredRequired.push({ sec, f });
+        });
+      });
+
+      return (
+        <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+          <div className="max-w-md mx-auto px-4 py-8 cib-fade">
+            <button onClick={() => setMode("home")} className="text-xs font-bold uppercase tracking-wider mb-4 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
+              &larr; Back to sections
+            </button>
+            <Eyebrow>Review</Eyebrow>
+            <h1 className="cib-display text-3xl mb-2" style={{ color: "var(--spruce)" }}>
+              {firstName(answers) ? firstName(answers) + "’s crisis plan" : "Crisis plan"}
+            </h1>
+            <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
+              {unansweredRequired.length === 0
+                ? "All required fields are answered."
+                : unansweredRequired.length + " required field" + (unansweredRequired.length === 1 ? "" : "s") + " still blank."}
+            </p>
+
+            <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid " + (checksOk === checks.length ? "var(--moss)" : "var(--lamplight)") }}>
+              <Eyebrow>Readiness check &middot; {checksOk} of {checks.length}</Eyebrow>
+              {checks.map((c) => (
+                <div key={c.label} className="flex items-start gap-3 py-2" style={{ borderTop: "1px solid var(--mist)" }}>
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5"
+                    style={c.ok
+                      ? { background: "var(--moss)", color: "var(--spruce-deep)" }
+                      : { background: "rgba(217,154,43,0.2)", color: "var(--lamplight-deep)", border: "1px solid var(--lamplight-deep)" }}>
+                    {c.ok ? "✓" : "!"}
+                  </span>
+                  <div>
+                    <div className="text-sm font-bold" style={{ color: c.ok ? "var(--spruce)" : "var(--ink)" }}>{tok(c.label, answers)}</div>
+                    {!c.ok && c.detail && <div className="text-xs mt-0.5" style={{ color: "var(--ink-soft)" }}>{tok(c.detail, answers)}</div>}
+                    {!c.ok && c.jump && c.jump.length > 0 && (
+                      <div className="mt-1">
+                        {c.jump.slice(0, 6).map(({ sec, f }) => (
+                          <button key={f.id} onClick={() => jumpTo(sec.id)} className="block text-left text-xs py-0.5 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
+                            &rarr; {tok(f.label, answers)}
+                          </button>
+                        ))}
+                        {c.jump.length > 6 && <p className="text-xs" style={{ color: "var(--ink-soft)" }}>&hellip;and {c.jump.length - 6} more.</p>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {unansweredRequired.length > 0 && (
+              <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--lamplight)" }}>
+                <Eyebrow>Still needed</Eyebrow>
+                {unansweredRequired.slice(0, 12).map(({ sec, f }) => (
+                  <button key={f.id} onClick={() => jumpTo(sec.id)} className="block w-full text-left text-sm py-1 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
+                    &rarr; {tok(f.label, answers)}
+                  </button>
+                ))}
+                {unansweredRequired.length > 12 && <p className="text-xs mt-2" style={{ color: "var(--ink-soft)" }}>&hellip;and {unansweredRequired.length - 12} more.</p>}
+              </div>
+            )}
+
+            <button onClick={() => setMode("family")} className="w-full rounded-2xl p-4 mb-4 text-left transition-all active:scale-[0.99]" style={{ background: "rgba(127,160,140,0.14)", border: "1px solid var(--moss)" }}>
+              <div className="font-bold text-sm" style={{ color: "var(--spruce)" }}>Open the family copy &rarr;</div>
+              <p className="text-xs" style={{ color: "var(--ink-soft)" }}>The same answers in plain language, ready to print.</p>
+            </button>
+
+            {CRISIS_SECTIONS.map((sec) => {
+              const answered = sec.fields.filter((f) => isVisible(f, answers) && formatAnswer(f, answers) !== null);
+              if (answered.length === 0) return null;
+              let lastGroup = null;
+              return (
+                <div key={sec.id} className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
+                  <Eyebrow>{sec.cfcrPage ? "CFCR page " + sec.cfcrPage : tok(sec.title, answers)}</Eyebrow>
+                  {answered.map((f, i) => {
+                    const a = formatAnswer(f, answers);
+                    const showGroup = f.group && f.group !== lastGroup;
+                    if (f.group) lastGroup = f.group;
+                    return (
+                      <React.Fragment key={f.id}>
+                        {showGroup && <div className="text-xs font-bold uppercase tracking-wider mt-4 mb-1" style={{ color: "var(--lamplight-deep)" }}>{tok(f.group, answers)}</div>}
+                        <div className="py-3" style={i < answered.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
+                          <div className="text-sm" style={{ color: "var(--ink-soft)" }}>{f.cfcr ? f.cfcr : tok(f.label, answers)}</div>
+                          <div className="font-bold mt-1 text-sm whitespace-pre-wrap" style={{ color: "var(--spruce)" }}>{a}</div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              );
+            })}
+
+            <button onClick={() => copy(summaryText(answers), "record")} className="w-full rounded-2xl py-4 text-lg font-bold mb-3" style={{ background: "var(--spruce)", color: "var(--cream-on-dark)" }}>
+              {copied === "record" ? "Copied" : "Copy for the record"}
+            </button>
+            <div className="flex gap-3">
+              <button onClick={() => { setSecIdx(0); setMode("fill"); }} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: "var(--spruce)", border: "1px solid var(--mist)" }}>
+                Keep editing
+              </button>
+              <button onClick={clearAll} className="flex-1 rounded-2xl py-3 text-base font-bold transition-colors hover:bg-[#FAF8F5]" style={{ background: "var(--card)", color: confirmClear ? "var(--alert)" : "var(--spruce)", border: "1px solid var(--mist)" }}>
+                {confirmClear ? "Tap again to erase" : "Start over"}
+              </button>
+            </div>
+
+            <div className="text-center text-xs mt-8 pt-6" style={{ color: "var(--ink-soft)", borderTop: "1px solid var(--mist)" }}>
+              <p>Answers live in this browser only. Nothing is transmitted anywhere.</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

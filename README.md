@@ -22,6 +22,7 @@ instrument.
 | **PKBS-2** — Preschool and Kindergarten Behavior Scales | 76 | Caregiver | Social Skills and Problem Behavior |
 | **CESD-R** — CES Depression Scale, Revised | 20 | Caregiver | Caregiver depression across nine symptom domains |
 | **CCA** — Comprehensive Child First Assessment | 11 sections | Clinician | Risk and protective factors, mental status, developmental and health history, formulation, treatment recommendations |
+| **Crisis Plan** — CFCR Crisis Plan (rev. 10/23) | 3 CFCR pages | Clinician, with the caregiver | The CFCR fields, in CFCR's order, worded for a young child. Copies out for data entry, and prints a plain-language page for the family |
 
 ## The handoff
 
@@ -150,6 +151,47 @@ Each instrument computes **raw totals only**.
   alert regardless of the total.**
 - **CCA** — not scored. Tracks required fields, per-section completion, and conditional
   follow-ups, and produces a summary for the record.
+- **Crisis Plan** — not scored. Tracks required fields, counts each field against CFCR's
+  character limit, and runs a ten-item readiness check: the plan date, all three page
+  attestations, clinical home and LME-MCO, the legally responsible person, a support with a
+  phone, consent answered for every support named, allergies and medications, page 3
+  complete, nothing over a character limit, and no blank text areas.
+
+## The Crisis Plan
+
+CFCR's Crisis Plan (rev. 10/23) is written in the first person, for an adult planning
+their own crisis: *what I am like when I am feeling well*, *who will visit me while I am
+hospitalized*. A Child First client is three years old, so filling it in means
+translating every prompt on the fly, and a form translated on the fly ends up describing
+the caregiver instead of the child.
+
+`crisis-plan.html` is the same form, not a bigger one. Same fields, same order, same
+option lists, same character limits, grouped into CFCR's three pages, so the record copy
+reads straight down each page as you key it in. What changes:
+
+- **The prompts name the child.** Type the name once and it resolves into every prompt
+  after it: *What `<child>` is like when doing well*. Where a prompt is reworded,
+  CFCR's exact wording shows underneath, and the record copy uses CFCR's label, not the
+  reworded one.
+- **Six prompts move from first to third person**, since the caregiver and clinician are
+  answering on the child's behalf. A short note on page 3 says so.
+- **The hints are CFCR's own instruction text**, trimmed, with one child-specific line
+  where it helps: *"Children" means the siblings at home*, *answer for this child's
+  current ability, not their age*, *a minor cannot execute a PAD*.
+- **Character limits are counted as you type**, and flagged on review, because CFCR
+  truncates at 1000 or 4000 and nobody notices until the text is gone.
+- **CFCR's six dropdown fields are marked as dropdowns.** The printed form does not show
+  their option lists, so rather than invent them those fields stay open here and the tag
+  says to pick the closest match at entry. Give me the real lists and they become
+  dropdowns in the app too.
+- **Narrative fields carry a one-tap "nothing to report"**, so a reviewer never meets a
+  blank.
+- **The family copy** reorders the same answers into a plain-language page for the
+  caregiver: who to call, a good day, the early signs, what a crisis looks like, what
+  helps, what a responder needs to know. It asks no extra questions. It prints on its own
+  and copies as text for a phone.
+
+Two outputs: **Copy for the record** for CFCR, and the **family copy** for the fridge.
 
 ## Where the answers live
 
@@ -163,8 +205,9 @@ a response.
   this device** panel on the start page, or **Delete saved answers** on that
   instrument's setup screen. "Start a new session" also clears the saved answers, and
   asks twice before it does. Your *edits to a question bank* persist separately.
-- **CCA** — answers autosave to `localStorage` so a long assessment can be paused and
-  resumed. They stay on that device, in that browser. "Clear all answers" erases them.
+- **CCA** and the **Crisis Plan** — answers autosave to `localStorage` so a long document can
+  be paused and resumed. They stay on that device, in that browser. "Clear all answers"
+  erases them.
 
 Saved answers are unencrypted and readable by anyone with the unlocked device. One
 device holds one session per instrument, so start a new session before handing the
@@ -228,6 +271,7 @@ load from CDNs, so a first load needs a network connection.
 ```
 index.html           All seven caregiver instruments, plus the dashboard
 cca-assessment.html  Comprehensive Child First Assessment (clinician)
+crisis-plan.html     Crisis Plan for a young child (clinician, with the caregiver)
 404.html             Not-found page
 images/logo.svg      Favicon
 netlify.toml         Publish config, security headers, redirects
@@ -240,8 +284,10 @@ question bank, a scorer that returns `{ headline, rows, alerts, followUps }`, an
 registry entry.** Nothing else changes.
 
 Each instrument is addressable directly: `#pq`, `#sniff`, `#mchat`, `#bitsea`, `#psi`, `#pkbs`, `#cesdr`.
-The CCA is a separate page because it is a different kind of instrument — sections and
-conditional fields rather than a flat item list, and completed by the clinician.
+The CCA and the Crisis Plan are separate pages because they are a different kind of
+instrument: sections and conditional fields rather than a flat item list, and completed by
+the clinician. They share a section engine of their own, a `SECTIONS` array of typed
+fields, `showIf` conditions, and a summary builder.
 
 ## Deploying
 
