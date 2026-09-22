@@ -54,10 +54,13 @@
     /* The family copy is meant to go on a fridge. Printing it prints only it. */
     @media print {
       body { background: #FFFFFF; }
-      body.printing-card > div > * { display: none !important; }
-      body.printing-card #familycard { display: block !important; }
-      #familycard { box-shadow: none !important; border: none !important; max-width: none !important; }
-      #familycard .no-print { display: none !important; }
+      body.printing-card * { visibility: hidden !important; }
+      body.printing-card #familycard, body.printing-card #familycard * { visibility: visible !important; }
+      body.printing-card #familycard {
+        position: absolute; left: 0; top: 0; width: 100%;
+        box-shadow: none !important; border: none !important; max-width: none !important;
+      }
+      body.printing-card #familycard .no-print { display: none !important; }
     }
   </style>
 
@@ -338,14 +341,18 @@
     function supportBlock(n, req) {
       const p = "s" + n + "_";
       const gate = n === 1 ? null : { field: "s" + (n - 1) + "_name", filled: true };
+      // Every field carries the group, not just the first: the header prints
+      // when the group changes, so whichever field is answered first opens the
+      // block even when "Calling order" is left blank.
+      const g = "Support " + n;
       const f = [
-        { id: p + "order", label: "Calling order", type: "text", group: "Support " + n,
+        { id: p + "order", label: "Calling order", type: "text", group: g,
           hint: n === 1 ? "1, 2, 3, in the order the family would call." : undefined },
-        { id: p + "who", label: "Who?", type: "text", dropdown: true, hint: n === 1 ? "Relationship or role." : undefined },
-        { id: p + "name", label: "Name", type: "text", req: req },
-        { id: p + "address", label: "Address", type: "text" },
-        { id: p + "phone", label: "Phone", type: "tel", req: req },
-        { id: p + "consent", label: "Is there a valid consent to release?", type: "radio", options: YN },
+        { id: p + "who", label: "Who?", type: "text", group: g, dropdown: true, hint: n === 1 ? "Relationship or role." : undefined },
+        { id: p + "name", label: "Name", type: "text", group: g, req: req },
+        { id: p + "address", label: "Address", type: "text", group: g },
+        { id: p + "phone", label: "Phone", type: "tel", group: g, req: req },
+        { id: p + "consent", label: "Is there a valid consent to release?", type: "radio", group: g, options: YN },
       ];
       return gate ? f.map((x) => ({ ...x, showIf: x.showIf || gate })) : f;
     }
@@ -435,7 +442,10 @@
       const out = [];
       for (let n = 1; n <= 5; n++) {
         const name = val(answers, "s" + n + "_name");
-        if (!name) continue;
+        // Supports 2 to 5 are gated on the one before being named, so an
+        // unnamed support hides every support after it. Stop here rather than
+        // carrying rows the form and the record copy have already dropped.
+        if (!name) break;
         out.push({
           n, name,
           order: val(answers, "s" + n + "_order"),
@@ -505,8 +515,8 @@
           ? { label: "First responder", body: val(answers, "p1_clinical_home") }
           : null,
         val(answers, "p1_lme_phone") ? { label: val(answers, "p1_lme") || "LME-MCO", body: val(answers, "p1_lme_phone") } : null,
-        { label: "988", body: "Call or text, any hour. For " + nm + ", and for you." },
-        { label: "911", body: "Only if someone is in immediate danger." },
+        { label: "988", body: "Call or text, any hour. For " + nm + ", and for you.", static: true },
+        { label: "911", body: "Only if someone is in immediate danger.", static: true },
       ]);
 
       push(nm.charAt(0).toUpperCase() + nm.slice(1) + " on a good day", [
@@ -590,7 +600,11 @@
       const blankAreas = [];
       CRISIS_SECTIONS.forEach((sec) => {
         sec.fields.forEach((f) => {
-          if (f.type === "area" && isVisible(f, answers) && !isAnswered(f, answers)) blankAreas.push({ sec, f });
+          if (f.type !== "area" || !isVisible(f, answers) || isAnswered(f, answers)) return;
+          // An optional Notes field next to a "No" is fine blank; a required
+          // narrative, or one offering "nothing to report", is not.
+          if (!f.req && !f.noneLabel) return;
+          blankAreas.push({ sec, f });
         });
       });
 
@@ -749,7 +763,7 @@
       // CFCR truncates at the limit, so the count is worth seeing while typing.
       const counter = field.max
         ? (() => {
-            const len = (typeof value === "string" ? value : "").length;
+            const len = (typeof value === "string" ? value : "").trim().length;
             const over = len > field.max;
             return (
               <div className="text-xs mt-1 text-right" style={{ color: over ? "var(--lamplight)" : "var(--soft-on-dark)" }}>
@@ -879,7 +893,7 @@
             {updated ? "Updated " + updated + "." : ""}
           </p>
 
-          {blocks.length === 0 && (
+          {!blocks.some((b) => b.items.some((i) => !i.static)) && (
             <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
               Nothing to print yet. This page fills in from the answers tagged &ldquo;Family copy&rdquo;.
             </p>
@@ -1269,7 +1283,7 @@
                       <div className="mt-1">
                         {c.jump.slice(0, 6).map(({ sec, f }) => (
                           <button key={f.id} onClick={() => jumpTo(sec.id)} className="block text-left text-xs py-0.5 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
-                            &rarr; {tok(f.label, answers)}
+                            &rarr; {f.group ? tok(f.group, answers) + ": " : ""}{tok(f.label, answers)}
                           </button>
                         ))}
                         {c.jump.length > 6 && <p className="text-xs" style={{ color: "var(--ink-soft)" }}>&hellip;and {c.jump.length - 6} more.</p>}
