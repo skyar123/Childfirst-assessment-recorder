@@ -1499,7 +1499,7 @@
         <div className="cib-body cib-screen w-full flex flex-col cib-fade" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
           <div className="max-w-md md:max-w-xl mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
 
-            <button onClick={onBack} className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
+            <button onClick={onBack} className="self-start inline-flex items-center min-h-[44px] -ml-1 px-1 text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
               &larr; {backLabel || "Back"}
             </button>
 
@@ -1624,7 +1624,7 @@
       return (
         <div className="cib-body cib-screen w-full flex flex-col cib-fade" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
           <div className="max-w-xs mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
-            <button onClick={onCancel} className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
+            <button onClick={onCancel} className="self-start inline-flex items-center min-h-[44px] -ml-1 px-1 text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
               &larr; Back
             </button>
 
@@ -1991,7 +1991,7 @@
           <div className="cib-body cib-screen w-full cib-fade" style={{ background: "var(--paper)", color: "var(--ink)" }}>
             <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-6 pb-16 safe-bottom">
 
-              <button onClick={onExit} className="text-xs font-bold uppercase tracking-wider transition-colors hover:text-[#7FA08C] mb-5" style={{ color: "var(--ink-soft)" }}>
+              <button onClick={onExit} className="inline-flex items-center min-h-[44px] -ml-1 px-1 text-xs font-bold uppercase tracking-wider transition-colors hover:text-[#4C6E5C] mb-3" style={{ color: "var(--ink-soft)" }}>
                 &larr; All assessments
               </button>
 
@@ -2056,15 +2056,15 @@
               <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
                 <Eyebrow>Session details</Eyebrow>
                 <div className="grid grid-cols-2 gap-3 mb-3">
-                  <input value={meta.childName} onChange={(e) => setMeta({ ...meta, childName: e.target.value })} placeholder="Child name" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                  <input value={meta.childId} onChange={(e) => setMeta({ ...meta, childId: e.target.value })} placeholder="Child ID" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                  <input value={meta.caregiverName} onChange={(e) => setMeta({ ...meta, caregiverName: e.target.value })} placeholder="Caregiver name" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                  <input value={meta.clinician} onChange={(e) => setMeta({ ...meta, clinician: e.target.value })} placeholder="Clinician" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                  <input value={meta.date} onChange={(e) => setMeta({ ...meta, date: e.target.value })} type="date" aria-label="Date of assessment" className="col-span-2 rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.childName} onChange={(e) => setMeta({ ...meta, childName: e.target.value })} placeholder="Child name" className="rounded-lg px-3 py-3 min-h-[44px] text-base border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.childId} onChange={(e) => setMeta({ ...meta, childId: e.target.value })} placeholder="Child ID" className="rounded-lg px-3 py-3 min-h-[44px] text-base border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.caregiverName} onChange={(e) => setMeta({ ...meta, caregiverName: e.target.value })} placeholder="Caregiver name" className="rounded-lg px-3 py-3 min-h-[44px] text-base border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.clinician} onChange={(e) => setMeta({ ...meta, clinician: e.target.value })} placeholder="Clinician" className="rounded-lg px-3 py-3 min-h-[44px] text-base border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                  <input value={meta.date} onChange={(e) => setMeta({ ...meta, date: e.target.value })} type="date" aria-label="Date of assessment" className="col-span-2 rounded-lg px-3 py-3 min-h-[44px] text-base border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
                   {instrument.needsAgeSex && (
                     <React.Fragment>
-                      <input value={meta.ageMonths} onChange={(e) => setMeta({ ...meta, ageMonths: e.target.value.replace(/\D/g, "") })} placeholder="Adjusted age (months)" inputMode="numeric" aria-label="Adjusted age in months" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
-                      <select value={meta.sex} onChange={(e) => setMeta({ ...meta, sex: e.target.value })} aria-label="Sex" className="rounded-lg px-3 py-2 text-sm border border-[#E4E9E2]" style={{ background: "var(--paper)" }}>
+                      <input value={meta.ageMonths} onChange={(e) => setMeta({ ...meta, ageMonths: e.target.value.replace(/\D/g, "") })} placeholder="Adjusted age (months)" inputMode="numeric" aria-label="Adjusted age in months" className="rounded-lg px-3 py-3 min-h-[44px] text-base border border-[#E4E9E2]" style={{ background: "var(--paper)" }} />
+                      <select value={meta.sex} onChange={(e) => setMeta({ ...meta, sex: e.target.value })} aria-label="Sex" className="rounded-lg px-3 py-3 min-h-[44px] text-base border border-[#E4E9E2]" style={{ background: "var(--paper)" }}>
                         <option value="">Sex</option>
                         <option value="M">Boy</option>
                         <option value="F">Girl</option>
@@ -2081,7 +2081,7 @@
                 <div className="flex gap-2">
                   {["Baseline", "6-months", "Discharge"].map((iv) => (
                     <button key={iv} onClick={() => setMeta({ ...meta, interval: meta.interval === iv ? "" : iv })}
-                      className="flex-1 rounded-lg py-2 text-sm font-bold transition-all"
+                      className="flex-1 rounded-lg py-3 min-h-[44px] text-sm font-bold transition-all"
                       style={meta.interval === iv
                         ? { background: instrument.accent, color: "var(--cream-on-dark)" }
                         : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>
@@ -2102,7 +2102,7 @@
                     <div className="flex gap-2">
                       {[["en", "English"], ["es", "Español"]].map(([code, label]) => (
                         <button key={code} onClick={() => setLang(code)}
-                          className="flex-1 rounded-lg py-2 text-sm font-bold transition-all"
+                          className="flex-1 rounded-lg py-3 min-h-[44px] text-sm font-bold transition-all"
                           style={lang === code
                             ? { background: instrument.accent, color: "var(--cream-on-dark)" }
                             : { background: "var(--paper)", color: "var(--ink-soft)", border: "1px solid var(--mist)" }}>
@@ -2113,7 +2113,7 @@
                   </div>
                 )}
                 <label className="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" checked={autoAdvance} onChange={(e) => setAutoAdvance(e.target.checked)} className="mt-1 w-5 h-5 flex-shrink-0" />
+                  <input type="checkbox" checked={autoAdvance} onChange={(e) => setAutoAdvance(e.target.checked)} className="w-6 h-6 flex-shrink-0 self-center" style={{ minWidth: "24px", minHeight: "24px" }} />
                   <span className="text-sm" style={{ color: "var(--ink-soft)" }}>
                     <strong style={{ color: "var(--spruce)" }}>Advance automatically</strong> — moving to the next
                     question as soon as an answer is tapped, so a caregiver taps once per question instead of twice.
@@ -2286,7 +2286,7 @@
 
                 {form.allowSkip && current.type !== "text" && (
                   <button onClick={() => choose("skip")}
-                    className="mt-4 self-center text-sm underline transition-colors hover:text-white"
+                    className="mt-3 self-center inline-flex items-center justify-center min-h-[44px] px-4 text-sm underline transition-colors hover:text-white"
                     style={{ color: value === "skip" ? "var(--lamplight)" : "var(--soft-on-dark)" }}>
                     {value === "skip" ? t.skipped : t.skip}
                   </button>

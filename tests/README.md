@@ -1,12 +1,13 @@
 # Tests
 
-Two suites, run against the real pages in headless Chromium. The app itself
+Three suites, run against the real pages in headless Chromium. The app itself
 still has no build step; these are a development aid, not part of the site.
 
 ```sh
 npm install -D playwright && npx playwright install chromium
 node tests/cfcr-fields.js
 node tests/behaviour.js
+node tests/scoring.js
 ```
 
 Both start their own static server on port 8125 and exit non-zero on failure.
@@ -19,6 +20,15 @@ fields tagged as dropdowns. The answers from this page get keyed into CFCR by
 hand, so a field that drifts from the real form is the one defect that matters
 most. Adding a field, dropping one, reordering them, changing a limit or
 rewriting a dropdown all fail here.
+
+**`scoring.js`** drives each instrument's own scorer with known inputs and
+checks the rules the README documents: which M-CHAT-R items are reversed and
+where its risk bands break, that CESD-R's top two options both score 3 and that
+items 14 and 15 each raise the suicidal-ideation alert on their own, that the PQ
+has fourteen one-point sections, and that every scorer survives blank, zeroed,
+skipped and partial input. A clinician reads these numbers and acts on them.
+Note that answers are stored as option **indices**, not labels, which is what
+the scorers read.
 
 **`behaviour.js`** covers the two outputs (the record copy keyed by CFCR page,
 the family copy), the readiness check, autosave, and the six defects found
