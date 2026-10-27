@@ -272,6 +272,7 @@ load from CDNs, so a first load needs a network connection.
 index.html           All seven caregiver instruments, plus the dashboard
 cca-assessment.html  Comprehensive Child First Assessment (clinician)
 crisis-plan.html     Crisis Plan for a young child (clinician, with the caregiver)
+tests/               Headless-browser checks for the Crisis Plan (see tests/README.md)
 404.html             Not-found page
 images/logo.svg      Favicon
 netlify.toml         Publish config, security headers, redirects
