@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>Crisis Plan for a Young Child — Child First</title>
   <meta name="description" content="Phone-first crisis plan for a birth-to-five child: what a good day looks like, the early signs, what helps, who to call in what order, and a plain-language copy for the family.">
@@ -26,10 +26,15 @@
       --paper: #F7F4EC;
       --card: #FFFFFF;
       --ink: #22312C;
-      --ink-soft: #5C6E66;
+      --ink-soft: #5A6C64;
       --lamplight: #F2B653;
       --lamplight-deep: #D99A2B;
       --moss: #7FA08C;
+      /* Text tokens, picked to clear WCAG AA 4.5:1 on paper, card and mist.
+         --moss and --lamplight-deep are fills and borders; they fail as text. */
+      --moss-deep: #4C6E5C;
+      --moss-on-dark: #97B2A2;
+      --amber-text: #89611B;
       --mist: #E4E9E2;
       --cream-on-dark: #F4EFE4;
       --soft-on-dark: #A8BBAF;
@@ -51,6 +56,16 @@
       outline: 3px solid var(--lamplight);
       outline-offset: 2px;
     }
+    /* Comfortable on a phone held by someone who is not used to being handed one. */
+    body { -webkit-text-size-adjust: 100%; }
+    /* 100vh counts the iOS Safari toolbar that is covering the page; 100dvh does not. */
+    .cib-screen {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
     /* The family copy is meant to go on a fridge. Printing it prints only it. */
     @media print {
       body { background: #FFFFFF; }
@@ -640,7 +655,7 @@
     // ─────────────────────────────────────────────────────────────
     const Eyebrow = ({ children, dark }) => (
       <div className="cib-body text-xs font-bold uppercase tracking-widest mb-2"
-        style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}>
+        style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss-deep)", letterSpacing: "0.14em" }}>
         {children}
       </div>
     );
@@ -660,7 +675,7 @@
 
     const FamilyTag = () => (
       <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap"
-        style={{ background: "rgba(127,160,140,0.22)", color: "var(--moss)", letterSpacing: "0.1em" }}
+        style={{ background: "rgba(127,160,140,0.22)", color: "var(--moss-on-dark)", letterSpacing: "0.1em" }}
         title="Also printed on the family copy">
         Family copy
       </span>
@@ -694,8 +709,8 @@
 
     function AssessmentIntro({ eyebrow, title, subtitle, purpose, meta, beginLabel, backLabel, onBegin, onBack }) {
       return (
-        <div className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
-          <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 flex flex-col flex-1">
+        <div className="cib-body cib-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+          <div className="max-w-md md:max-w-2xl mx-auto w-full px-5 pt-6 pb-8 flex flex-col flex-1">
             <button onClick={onBack} className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
               &larr; {backLabel || "Back"}
             </button>
@@ -884,7 +899,7 @@
       const updated = val(answers, "p1_revision_date") || val(answers, "p1_initial_date");
       return (
         <div id="familycard" className="max-w-md mx-auto px-5 py-8" style={{ background: "var(--card)" }}>
-          <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--moss)", letterSpacing: "0.14em" }}>Family copy</div>
+          <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--moss-deep)", letterSpacing: "0.14em" }}>Family copy</div>
           <h1 className="cib-display text-3xl leading-tight mb-1" style={{ color: "var(--spruce)" }}>
             {nm ? nm + "’s crisis plan" : "Your child’s crisis plan"}
           </h1>
@@ -1051,9 +1066,9 @@
       // ─── HOME ───
       if (mode === "home") {
         return (
-          <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-            <div className="max-w-md mx-auto px-5 py-10 pb-32">
-              <a href="index.html" className="inline-block text-xs font-bold uppercase tracking-wider mb-6 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
+          <div className="cib-body cib-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+            <div className="max-w-md md:max-w-2xl mx-auto px-5 py-10 pb-32">
+              <a href="index.html" className="inline-flex items-center min-h-[44px] -ml-1 px-1 text-xs font-bold uppercase tracking-wider mb-4 transition-colors hover:text-[#4C6E5C]" style={{ color: "var(--ink-soft)" }}>
                 &larr; Back to Assessment Recorders
               </a>
 
@@ -1062,7 +1077,7 @@
               <p className="text-sm mb-6" style={{ color: "var(--ink-soft)" }}>
                 The CFCR Crisis Plan (rev. 10/23), field for field, in CFCR's order, worded for a
                 young child. Autosaves on this device.
-                {saveState === "saved" && <span style={{ color: "var(--moss)" }}> Saved.</span>}
+                {saveState === "saved" && <span style={{ color: "var(--moss-deep)" }}> Saved.</span>}
                 {saveState === "off" && <span> Saving is off here.</span>}
               </p>
 
@@ -1071,7 +1086,7 @@
                 <p className="text-xs leading-relaxed" style={{ color: "var(--ink-soft)" }}>
                   Same fields as CFCR, so the record copy reads straight down each page. Where a
                   prompt is reworded for a child, CFCR's own wording shows under it.
-                  <span style={{ color: "var(--lamplight-deep)" }}> *</span> marks a required field,
+                  <span style={{ color: "var(--amber-text)" }}> *</span> marks a required field,
                   and character limits are counted as you type.
                 </p>
               </div>
@@ -1096,9 +1111,9 @@
                           </div>
                         </div>
                         {c >= 1
-                          ? <span className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>&#10003;</span>
+                          ? <span className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss-deep)" }}>&#10003;</span>
                           : c > 0
-                            ? <span className="text-xs font-bold flex-shrink-0" style={{ color: "var(--lamplight-deep)" }}>{Math.round(c * 100)}%</span>
+                            ? <span className="text-xs font-bold flex-shrink-0" style={{ color: "var(--amber-text)" }}>{Math.round(c * 100)}%</span>
                             : null}
                       </div>
                     </button>
@@ -1161,8 +1176,8 @@
       if (mode === "fill") {
         let lastGroup = null;
         return (
-          <div ref={topRef} className="cib-body min-h-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
-            <div className="max-w-md mx-auto w-full px-5 pt-6 pb-10 flex flex-col flex-1">
+          <div ref={topRef} className="cib-body cib-screen w-full flex flex-col animate-[cibFade_320ms_ease_both]" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+            <div className="max-w-md md:max-w-2xl mx-auto w-full px-5 pt-6 pb-10 flex flex-col flex-1">
               <div className="mb-6">
                 <div className="flex justify-between items-baseline mb-2">
                   <button onClick={() => setMode("home")} className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--soft-on-dark)" }}>
@@ -1216,7 +1231,7 @@
       // ─── FAMILY COPY ───
       if (mode === "family") {
         return (
-          <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+          <div className="cib-body cib-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
             <div className="max-w-md mx-auto px-5 py-8 no-print">
               <button onClick={() => setMode("done")} className="text-xs font-bold uppercase tracking-wider mb-4 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
                 &larr; Back to review
@@ -1251,8 +1266,8 @@
       });
 
       return (
-        <div className="cib-body min-h-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-          <div className="max-w-md mx-auto px-4 py-8 cib-fade">
+        <div className="cib-body cib-screen w-full animate-[cibFade_320ms_ease_both]" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+          <div className="max-w-md md:max-w-2xl mx-auto px-4 py-8 cib-fade">
             <button onClick={() => setMode("home")} className="text-xs font-bold uppercase tracking-wider mb-4 transition-colors hover:text-[#7FA08C]" style={{ color: "var(--ink-soft)" }}>
               &larr; Back to sections
             </button>
@@ -1273,7 +1288,7 @@
                   <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5"
                     style={c.ok
                       ? { background: "var(--moss)", color: "var(--spruce-deep)" }
-                      : { background: "rgba(217,154,43,0.2)", color: "var(--lamplight-deep)", border: "1px solid var(--lamplight-deep)" }}>
+                      : { background: "rgba(217,154,43,0.2)", color: "var(--amber-text)", border: "1px solid var(--lamplight-deep)" }}>
                     {c.ok ? "✓" : "!"}
                   </span>
                   <div>
@@ -1324,7 +1339,7 @@
                     if (f.group) lastGroup = f.group;
                     return (
                       <React.Fragment key={f.id}>
-                        {showGroup && <div className="text-xs font-bold uppercase tracking-wider mt-4 mb-1" style={{ color: "var(--lamplight-deep)" }}>{tok(f.group, answers)}</div>}
+                        {showGroup && <div className="text-xs font-bold uppercase tracking-wider mt-4 mb-1" style={{ color: "var(--amber-text)" }}>{tok(f.group, answers)}</div>}
                         <div className="py-3" style={i < answered.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
                           <div className="text-sm" style={{ color: "var(--ink-soft)" }}>{f.cfcr ? f.cfcr : tok(f.label, answers)}</div>
                           <div className="font-bold mt-1 text-sm whitespace-pre-wrap" style={{ color: "var(--spruce)" }}>{a}</div>

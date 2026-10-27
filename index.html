@@ -26,11 +26,15 @@
       --paper: #F7F4EC;
       --card: #FFFFFF;
       --ink: #22312C;
-      --ink-soft: #5C6E66;
+      --ink-soft: #5A6C64;
       --lamplight: #F2B653;
       --lamplight-deep: #D99A2B;
       --moss: #7FA08C;
-      --moss-deep: #4F7360;
+      /* Text tokens, picked to clear WCAG AA 4.5:1 on paper, card and mist.
+         --moss and --lamplight-deep are fills and borders; they fail as text. */
+      --moss-deep: #4C6E5C;
+      --moss-on-dark: #97B2A2;
+      --amber-text: #89611B;
       --mist: #E4E9E2;
       --cream-on-dark: #F4EFE4;
       --soft-on-dark: #A8BBAF;
@@ -75,6 +79,13 @@
     /* Comfortable on a phone held by someone who is not used to being handed one. */
     body { -webkit-text-size-adjust: 100%; }
     .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+    /* 100vh counts the iOS Safari toolbar that is covering the page; 100dvh does not. */
+    .cib-screen {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
   </style>
 
   <script>
@@ -1271,6 +1282,7 @@
         eyebrow: "Family Strengths & Needs",
         tag: "Baseline · Required",
         accent: "#4F7360",
+        accentText: "#4C6E5C",
         accentVar: "var(--moss-deep)",
         audience: "parent",
         build: pqForm,
@@ -1287,6 +1299,7 @@
         eyebrow: "Family Service Needs",
         tag: "Baseline · Quarterly",
         accent: "#2C6E75",
+        accentText: "#2C6E75",
         accentVar: "var(--teal)",
         audience: "parent",
         build: sniffForm,
@@ -1308,6 +1321,7 @@
         eyebrow: "Toddler Development",
         tag: "16–30 months",
         accent: "#3E6B8A",
+        accentText: "#3E6B8A",
         accentVar: "var(--sky)",
         audience: "parent",
         build: mchatForm,
@@ -1325,6 +1339,7 @@
         eyebrow: "Social & Emotional",
         tag: "12–35 months",
         accent: "#B4552E",
+        accentText: "#A64E2A",
         accentVar: "var(--alert)",
         audience: "parent",
         build: bitseaForm,
@@ -1347,6 +1362,7 @@
         eyebrow: "Parenting Stress",
         tag: "Caregiver self-report",
         accent: "#7FA08C",
+        accentText: "#566D5F",
         accentVar: "var(--moss)",
         audience: "parent",
         build: psiForm,
@@ -1363,6 +1379,7 @@
         eyebrow: "Preschool & Kindergarten",
         tag: "Ages 3–6",
         accent: "#9E4A5B",
+        accentText: "#9E4A5B",
         accentVar: "var(--rose)",
         audience: "parent",
         build: pkbsForm,
@@ -1379,6 +1396,7 @@
         eyebrow: "Caregiver Wellbeing",
         tag: "Baseline · 6 mo · Discharge",
         accent: "#6B5B8C",
+        accentText: "#6B5B8C",
         accentVar: "var(--plum)",
         audience: "parent",
         build: cesdrForm,
@@ -1478,8 +1496,8 @@
     // ─────────────────────────────────────────────────────────────
     function AssessmentIntro({ eyebrow, title, subtitle, purpose, note, meta, accent, beginLabel, backLabel, onBegin, onBack }) {
       return (
-        <div className="cib-body min-h-screen w-full flex flex-col cib-fade" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
-          <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
+        <div className="cib-body cib-screen w-full flex flex-col cib-fade" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+          <div className="max-w-md md:max-w-xl mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
 
             <button onClick={onBack} className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
               &larr; {backLabel || "Back"}
@@ -1539,9 +1557,9 @@
         return () => clearTimeout(t);
       }, []);
       return (
-        <div className="cib-body min-h-screen w-full flex flex-col relative overflow-hidden" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+        <div className="cib-body cib-screen w-full flex flex-col relative overflow-hidden" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
           <Confetti run={celebrate} />
-          <div className="max-w-md mx-auto w-full px-6 py-10 safe-bottom flex flex-col flex-1 items-center justify-center text-center relative" style={{ zIndex: 2 }}>
+          <div className="max-w-md md:max-w-xl mx-auto w-full px-6 py-10 safe-bottom flex flex-col flex-1 items-center justify-center text-center relative" style={{ zIndex: 2 }}>
 
             <div className="cib-bloom mb-7" aria-hidden="true">
               <svg width="120" height="120" viewBox="0 0 120 120" role="img">
@@ -1604,7 +1622,7 @@
       };
 
       return (
-        <div className="cib-body min-h-screen w-full flex flex-col cib-fade" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+        <div className="cib-body cib-screen w-full flex flex-col cib-fade" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
           <div className="max-w-xs mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
             <button onClick={onCancel} className="self-start text-xs font-bold uppercase tracking-wider transition-colors hover:text-white" style={{ color: "var(--soft-on-dark)" }}>
               &larr; Back
@@ -1962,7 +1980,7 @@
       };
 
       const Eyebrow = ({ children, dark }) => (
-        <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss)", letterSpacing: "0.14em" }}>
+        <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: dark ? "var(--soft-on-dark)" : "var(--moss-deep)", letterSpacing: "0.14em" }}>
           {children}
         </div>
       );
@@ -1970,8 +1988,8 @@
       // ═══ SETUP (clinician) ═══
       if (mode === "setup") {
         return (
-          <div className="cib-body min-h-screen w-full cib-fade" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-            <div className="max-w-md mx-auto px-4 pt-6 pb-16 safe-bottom">
+          <div className="cib-body cib-screen w-full cib-fade" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+            <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-6 pb-16 safe-bottom">
 
               <button onClick={onExit} className="text-xs font-bold uppercase tracking-wider transition-colors hover:text-[#7FA08C] mb-5" style={{ color: "var(--ink-soft)" }}>
                 &larr; All assessments
@@ -2202,8 +2220,8 @@
         );
 
         return (
-          <div className="cib-body min-h-screen w-full flex flex-col" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
-            <div className="max-w-md mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
+          <div className="cib-body cib-screen w-full flex flex-col" style={{ background: "var(--spruce-deep)", color: "var(--cream-on-dark)" }}>
+            <div className="max-w-md md:max-w-xl mx-auto w-full px-5 pt-6 pb-8 safe-bottom flex flex-col flex-1">
 
               <div className="mb-7">
                 <div className="flex justify-between items-baseline mb-2">
@@ -2311,7 +2329,7 @@
       const hv = scored.headline && scored.headline.verdict;
 
       return (
-        <div className="cib-body min-h-screen w-full cib-fade" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+        <div className="cib-body cib-screen w-full cib-fade" style={{ background: "var(--paper)", color: "var(--ink)" }}>
           <div className="max-w-md mx-auto px-4 py-8 safe-bottom">
 
             <Eyebrow>Provider snapshot</Eyebrow>
@@ -2399,7 +2417,7 @@
                     <div key={q.id} className="py-2.5" style={i < askable.length - 1 ? { borderBottom: "1px solid var(--mist)" } : {}}>
                       <div className="flex justify-between items-start gap-2">
                         <div className="text-xs" style={{ color: "var(--ink-soft)" }}>{i + 1}. {q.num ? q.num + " " : ""}{q.text}</div>
-                        <div className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss)" }}>{s}</div>
+                        <div className="text-xs font-bold flex-shrink-0" style={{ color: "var(--moss-deep)" }}>{s}</div>
                       </div>
                       <div className="text-sm font-bold mt-0.5" style={{ color: answers[q.id] === "skip" ? "var(--ink-soft)" : "var(--spruce)" }}>
                         {answerLabel(q)}
@@ -2478,8 +2496,8 @@
       if (instrument) return <Recorder key={instrument.id} instrument={instrument} onExit={close} resumeInPlace={enteredBy === "load"} />;
 
       return (
-        <div className="cib-body min-h-screen w-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
-          <div className="max-w-md mx-auto w-full px-5 py-12 safe-bottom">
+        <div className="cib-body cib-screen w-full" style={{ background: "var(--paper)", color: "var(--ink)" }}>
+          <div className="max-w-md md:max-w-3xl mx-auto w-full px-5 py-12 safe-bottom">
 
             <div className="text-center mb-10">
               <h1 className="cib-display text-3xl font-bold tracking-tight mb-2" style={{ color: "var(--spruce)" }}>
@@ -2492,7 +2510,7 @@
 
             {saved.length > 0 && (
               <div className="rounded-2xl p-4 mb-8" style={{ background: "var(--card)", border: "1px solid var(--mist)" }}>
-                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--moss)", letterSpacing: "0.14em" }}>
+                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--moss-deep)", letterSpacing: "0.14em" }}>
                   Saved on this device
                 </div>
                 <p className="text-xs mb-3" style={{ color: "var(--ink-soft)" }}>
@@ -2522,13 +2540,13 @@
               </div>
             )}
 
-            <div className="flex flex-col gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 items-start">
               {INSTRUMENTS.map((ins) => (
                 <button key={ins.id} onClick={() => open(ins.id)}
                   className="w-full text-left bg-white p-6 rounded-2xl border border-[#E4E9E2] hover:shadow-md transition-all active:scale-[0.99] group"
                   style={{ borderLeft: "5px solid " + ins.accent }}>
                   <div className="flex justify-between items-start mb-3 gap-3">
-                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: ins.accent }}>{ins.eyebrow}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: ins.accentText || ins.accent }}>{ins.eyebrow}</span>
                     <span className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0" style={{ color: "var(--ink-soft)", background: "var(--mist)" }}>{ins.tag}</span>
                   </div>
                   <h2 className="cib-display text-xl font-bold mb-2" style={{ color: "var(--spruce)" }}>{ins.card}</h2>
@@ -2541,7 +2559,7 @@
                 className="block w-full text-left bg-white p-6 rounded-2xl border border-[#E4E9E2] hover:shadow-md transition-all active:scale-[0.99] no-underline"
                 style={{ borderLeft: "5px solid var(--lamplight-deep)" }}>
                 <div className="flex justify-between items-start mb-3 gap-3">
-                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--lamplight-deep)" }}>Clinician-completed</span>
+                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--amber-text)" }}>Clinician-completed</span>
                   <span className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0" style={{ color: "var(--ink-soft)", background: "var(--mist)" }}>11 sections</span>
                 </div>
                 <h2 className="cib-display text-xl font-bold mb-2" style={{ color: "var(--spruce)" }}>CCA &amp; Comprehensive CF Assessment</h2>
